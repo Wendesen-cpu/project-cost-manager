@@ -20,7 +20,7 @@ export async function loginAdmin(formData: FormData) {
                 data: {
                     email,
                     password: password,
-                    role: 'SUPER_ADMIN',
+                    role: 'ADMIN',
                     status: 'APPROVED',
                     firstName: 'Super',
                     lastName: 'Admin'

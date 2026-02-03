@@ -22,14 +22,14 @@ export async function createEmployee(data: {
         const encryptedPassword = encryptPassword(data.password);
         const role = data.role || 'EMPLOYEE';
 
-        if (role === 'ADMIN') {
+        if (role === 'PM') {
             const admin = await (prisma.admin as any).create({
                 data: {
                     firstName: data.firstName,
                     lastName: data.lastName,
                     email: data.email,
                     password: encryptedPassword,
-                    role: 'ADMIN',
+                    role: 'PM',
                     status: 'APPROVED',
                     createdById: session.id as string,
                 } as any,
@@ -82,17 +82,17 @@ export async function getEmployees() {
 
     const session = await getSession();
     const currentUserId = session?.id;
-    const isSuperAdmin = session?.role === 'SUPER_ADMIN';
+    const isAdmin = session?.role === 'ADMIN';
 
     const rolePriority: Record<string, number> = {
-        'SUPER_ADMIN': 1,
-        'ADMIN': 2,
+        'ADMIN': 1,
+        'PM': 2,
         'EMPLOYEE': 3,
     };
 
     return combined.map(user => ({
         ...user,
-        isEditable: isSuperAdmin || (user as any).createdById === currentUserId || user.id === currentUserId
+        isEditable: isAdmin || (user as any).createdById === currentUserId || user.id === currentUserId
     })).sort((a, b) => {
         const priorityA = rolePriority[a.role] || 4;
         const priorityB = rolePriority[b.role] || 4;
@@ -107,7 +107,7 @@ export async function getEmployees() {
 
 export async function getEmployee(id: string) {
     const session = await getSession();
-    const isSuperAdmin = session?.role === 'SUPER_ADMIN';
+    const isAdmin = session?.role === 'ADMIN';
 
     // Try Employee table first
     let user = await prisma.employee.findUnique({
@@ -123,7 +123,7 @@ export async function getEmployee(id: string) {
 
     if (user && user.password) {
         // Only show password if creator or super admin
-        if (isSuperAdmin || (user as any).createdById === session?.id || user.id === session?.id) {
+        if (isAdmin || (user as any).createdById === session?.id || user.id === session?.id) {
             try {
                 user.password = decryptPassword(user.password);
             } catch (e) {
@@ -136,7 +136,7 @@ export async function getEmployee(id: string) {
 
     // Add isEditable flag for the backend result as well
     if (user) {
-        user.isEditable = isSuperAdmin || (user as any).createdById === session?.id || user.id === session?.id;
+        user.isEditable = isAdmin || (user as any).createdById === session?.id || user.id === session?.id;
     }
 
     return user;
@@ -160,11 +160,11 @@ export async function updateEmployee(id: string, data: {
 
     // Try finding in Employee first
     const employee = await prisma.employee.findUnique({ where: { id } });
-    const isSuperAdmin = session.role === 'SUPER_ADMIN';
+    const isAdmin = session.role === 'ADMIN';
 
     let result;
     if (employee) {
-        if (!isSuperAdmin && (employee as any).createdById !== session.id && employee.id !== session.id) {
+        if (!isAdmin && (employee as any).createdById !== session.id && employee.id !== session.id) {
             return { error: 'You do not have permission to edit this user' };
         }
         result = await prisma.employee.update({
@@ -174,7 +174,7 @@ export async function updateEmployee(id: string, data: {
     } else {
         const admin = await prisma.admin.findUnique({ where: { id } });
         if (!admin) return { error: 'User not found' };
-        if (!isSuperAdmin && (admin as any).createdById !== session.id && admin.id !== session.id) {
+        if (!isAdmin && (admin as any).createdById !== session.id && admin.id !== session.id) {
             return { error: 'You do not have permission to edit this user' };
         }
         result = await prisma.admin.update({
@@ -190,13 +190,13 @@ export async function updateEmployee(id: string, data: {
 export async function deleteEmployee(id: string) {
     const session = await getSession();
     if (!session) return { error: 'Unauthorized' };
-    const isSuperAdmin = session.role === 'SUPER_ADMIN';
+    const isAdmin = session.role === 'ADMIN';
 
     // Try Employee first
     const employee = await prisma.employee.findUnique({ where: { id } });
 
     if (employee) {
-        if (!isSuperAdmin && (employee as any).createdById !== session.id) {
+        if (!isAdmin && (employee as any).createdById !== session.id) {
             return { error: 'You do not have permission to delete this user' };
         }
         await prisma.employee.delete({
@@ -205,7 +205,7 @@ export async function deleteEmployee(id: string) {
     } else {
         const admin = await prisma.admin.findUnique({ where: { id } });
         if (!admin) return { error: 'User not found' };
-        if (!isSuperAdmin && (admin as any).createdById !== session.id) {
+        if (!isAdmin && (admin as any).createdById !== session.id) {
             return { error: 'You do not have permission to delete this user' };
         }
         await prisma.admin.delete({
