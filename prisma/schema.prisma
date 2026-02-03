@@ -21,6 +21,7 @@ model Employee {
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
   status       String              @default("PENDING")
+  createdById  String?
   approvedById String?
   approvedBy   Admin?              @relation("AdminApprovals", fields: [approvedById], references: [id])
   projects     ProjectAssignment[]
@@ -85,10 +86,13 @@ model VacationLog {
 
 model Admin {
   id                String     @id @default(uuid())
+  firstName         String     @default("System")
+  lastName          String     @default("Admin")
   email             String     @unique
   password          String
   role              String     @default("ADMIN")
   status            String     @default("PENDING")
+  createdById       String?
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   approvedEmployees Employee[] @relation("AdminApprovals")

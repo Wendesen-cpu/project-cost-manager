@@ -36,8 +36,10 @@ export default function LoginPage() {
                         {pending ? 'Logging in...' : 'Login'}
                     </button>
                     <div className="text-center mt-4 text-sm">
-                        <a href="/admin/register" className="text-blue-600 hover:underline">Register new account</a>
-                        <div className="mt-2">
+                        <div className="mt-2 text-gray-400">
+                            Super Admin can manage all accounts.
+                        </div>
+                        <div className="mt-4">
                             <a href="/employee/login" className="text-gray-500 hover:text-gray-700">Go to Employee Portal</a>
                         </div>
                     </div>

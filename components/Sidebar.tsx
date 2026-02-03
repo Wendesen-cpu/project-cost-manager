@@ -13,7 +13,6 @@ const navItems = [
     { name: 'Projects', href: '/admin/projects', icon: Briefcase },
     { name: 'Projections', href: '/admin/projections', icon: TrendingUp },
     { name: 'Gantt Chart', href: '/admin/gantt', icon: Calendar },
-    { name: 'Approvals', href: '/admin/approval', icon: Users }, // Re-using Users icon or imported one
 ];
 
 export function Sidebar() {

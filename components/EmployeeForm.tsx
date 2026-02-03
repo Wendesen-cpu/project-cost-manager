@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Employee } from '@prisma/client';
 
 interface EmployeeFormProps {
-    employee?: Employee;
+    employee?: any; // Can be Employee or Admin
 }
 
 export function EmployeeForm({ employee }: EmployeeFormProps) {
@@ -23,7 +23,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             lastName: formData.get('lastName') as string,
             monthlyCost: parseFloat(formData.get('monthlyCost') as string),
             vacationDays: parseInt(formData.get('vacationDays') as string) || 0,
-            role: 'EMPLOYEE'
+            role: formData.get('role') as string || 'EMPLOYEE'
         };
 
         try {
@@ -126,14 +126,25 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                 </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Role</label>
+                    <select
+                        name="role"
+                        defaultValue={employee?.role || 'EMPLOYEE'}
+                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                        <option value="EMPLOYEE">Employee</option>
+                        <option value="ADMIN">Admin</option>
+                    </select>
+                </div>
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-end mt-6">
                 <button
                     type="submit"
                     disabled={loading}
                     className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-blue-400"
                 >
-                    {loading ? 'Saving...' : (employee ? 'Update Employee' : 'Create Employee')}
+                    {loading ? 'Saving...' : (employee ? 'Update User' : 'Create User')}
                 </button>
             </div>
         </form>

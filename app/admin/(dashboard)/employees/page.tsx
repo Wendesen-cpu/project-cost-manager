@@ -1,6 +1,6 @@
 import { getEmployees } from '@/app/actions/employees';
 import Link from 'next/link';
-import { Employee } from '@prisma/client';
+import { DeleteUserButton } from '@/components/DeleteUserButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,7 +51,7 @@ export default async function EmployeesPage() {
                                 </td>
                             </tr>
                         ) : (
-                            employees.map((employee: Employee) => (
+                            employees.map((employee: any) => (
                                 <tr key={employee.id}>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm font-medium text-gray-900">
@@ -74,10 +74,17 @@ export default async function EmployeesPage() {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {employee.vacationDays}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <Link href={`/admin/employees/${employee.id}/edit`} className="text-indigo-600 hover:text-indigo-900">
-                                            Edit
-                                        </Link>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                                        {employee.isEditable ? (
+                                            <>
+                                                <Link href={`/admin/employees/${employee.id}/edit`} className="text-indigo-600 hover:text-indigo-900">
+                                                    Edit
+                                                </Link>
+                                                <DeleteUserButton id={employee.id} />
+                                            </>
+                                        ) : (
+                                            <span className="text-gray-400 italic">No permission</span>
+                                        )}
                                     </td>
                                 </tr>
                             ))

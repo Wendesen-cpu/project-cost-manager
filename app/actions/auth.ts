@@ -1,49 +1,8 @@
 'use server';
 
 import { prisma } from '@/app/lib/prisma';
-import { hashPassword, verifyPassword, createSession, logout as logoutSession, SUPER_ADMIN_EMAIL } from '@/app/lib/auth';
-import { sendOtpEmail } from '@/app/lib/email';
+import { decryptPassword, verifyPassword, createSession, logout as logoutSession, SUPER_ADMIN_EMAIL } from '@/app/lib/auth';
 import { redirect } from 'next/navigation';
-
-export async function registerAdmin(formData: FormData) {
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-
-    if (!email || !password) {
-        return { error: 'Email and password are required' };
-    }
-
-    const existingAdmin = await prisma.admin.findUnique({ where: { email } });
-    if (existingAdmin) {
-        return { error: 'Admin already exists' };
-    }
-
-    const hashedPassword = await hashPassword(password);
-
-    // Check if it's the Super Admin registering (first time setup or explicit match)
-    // For simplicity, if email matches SUPER_ADMIN_EMAIL, auto-approve and make SUPER_ADMIN
-    const role = email === SUPER_ADMIN_EMAIL ? 'SUPER_ADMIN' : 'ADMIN';
-    const status = email === SUPER_ADMIN_EMAIL ? 'APPROVED' : 'PENDING';
-
-    await prisma.admin.create({
-        data: {
-            email,
-            password: hashedPassword,
-            role,
-            status,
-        },
-    });
-
-    const admin = await prisma.admin.findUnique({ where: { email } });
-    if (status === 'PENDING') {
-        return { success: 'Registration successful! Waiting for Super Admin approval.' };
-    } else if (admin) {
-        // Auto-login if super admin
-        await createSession({ id: admin.id, email: admin.email, role: admin.role });
-        redirect('/admin');
-    }
-    return { error: 'Admin not found after creation' };
-}
 
 export async function loginAdmin(formData: FormData) {
     const email = formData.get('email') as string;
@@ -51,17 +10,20 @@ export async function loginAdmin(formData: FormData) {
 
     const admin = await prisma.admin.findUnique({ where: { email } });
 
-    // Special logic for Super Admin from Env
+    // Special logic for Super Admin from Env (Fallback)
     if (!admin && email === SUPER_ADMIN_EMAIL && process.env.SUPER_ADMIN_PASSWORD) {
         if (password === process.env.SUPER_ADMIN_PASSWORD) {
-            // Auto-create/seed the super admin
-            const hashedPassword = await hashPassword(password);
-            const newAdmin = await prisma.admin.create({
+            // Check if super admin exists but we just didn't find it? 
+            // Better to just fail if not found or refer to the ENV.
+            // But for now, let's just create it if missing as a fail-safe.
+            const newAdmin = await (prisma.admin as any).create({
                 data: {
                     email,
-                    password: hashedPassword,
+                    password: password,
                     role: 'SUPER_ADMIN',
                     status: 'APPROVED',
+                    firstName: 'Super',
+                    lastName: 'Admin'
                 }
             });
             await createSession({ id: newAdmin.id, email: newAdmin.email, role: newAdmin.role });
@@ -69,7 +31,25 @@ export async function loginAdmin(formData: FormData) {
         }
     }
 
-    if (!admin || !(await verifyPassword(password, admin.password))) {
+    if (!admin) {
+        return { error: 'Invalid credentials' };
+    }
+
+    let isMatch = false;
+    try {
+        // Try decryption (new AES system)
+        const decrypted = decryptPassword(admin.password);
+        isMatch = decrypted === password;
+    } catch (e) {
+        // Fallback: Try hash verification
+        isMatch = await verifyPassword(password, admin.password);
+        // Fallback 2: Try direct comparison
+        if (!isMatch) {
+            isMatch = admin.password === password;
+        }
+    }
+
+    if (!isMatch) {
         return { error: 'Invalid credentials' };
     }
 
@@ -79,48 +59,6 @@ export async function loginAdmin(formData: FormData) {
 
     await createSession({ id: admin.id, email: admin.email, role: admin.role });
     redirect('/admin');
-}
-
-export async function requestApprovalOtp() {
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
-
-    await prisma.otp.create({
-        data: {
-            email: SUPER_ADMIN_EMAIL,
-            code: otpCode,
-            expiresAt,
-        },
-    });
-
-    await sendOtpEmail(SUPER_ADMIN_EMAIL, otpCode);
-    return { success: true };
-}
-
-export async function approveAdmin(adminId: string, otp: string) {
-    // 1. Verify OTP
-    const validOtp = await prisma.otp.findFirst({
-        where: {
-            email: SUPER_ADMIN_EMAIL,
-            code: otp,
-            expiresAt: { gt: new Date() },
-        },
-    });
-
-    if (!validOtp) {
-        return { error: 'Invalid or expired OTP' };
-    }
-
-    // 2. Approve Admin
-    await prisma.admin.update({
-        where: { id: adminId },
-        data: { status: 'APPROVED' },
-    });
-
-    // 3. Delete used OTPs (optional cleanup)
-    await prisma.otp.deleteMany({ where: { email: SUPER_ADMIN_EMAIL } });
-
-    return { success: true };
 }
 
 export async function logout() {
