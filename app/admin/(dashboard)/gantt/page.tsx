@@ -7,6 +7,7 @@ export default async function GanttPage() {
     const projects = await prisma.project.findMany({
         where: { status: 'ACTIVE' },
         include: {
+            owner: true,
             members: {
                 include: {
                     employee: true
@@ -25,6 +26,7 @@ export default async function GanttPage() {
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Owner</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Team</th>
                         </tr>
                     </thead>
@@ -47,6 +49,9 @@ export default async function GanttPage() {
                                             ></div>
                                         </div>
                                     )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {project.owner?.email || 'N/A'}
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex flex-wrap gap-2">
