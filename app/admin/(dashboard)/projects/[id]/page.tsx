@@ -1,6 +1,6 @@
 import { prisma } from '@/app/lib/prisma';
 import { AssignEmployeeForm } from '@/components/AssignEmployeeForm';
-import { intervalToDuration, formatDuration } from 'date-fns';
+import { intervalToDuration, formatDuration, differenceInBusinessDays } from 'date-fns';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -53,6 +53,15 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
     const endDate = project.endDate || new Date();
     const durationMonths = Math.max(1, (endDate.getTime() - project.startDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
     const totalFixedMonthlyCost = project.fixedMonthlyCosts * durationMonths;
+
+    // Estimated Cost Calculation
+    // Business days between start and end date (inclusive)
+    const businessDays = differenceInBusinessDays(endDate, project.startDate) + 1;
+    const estimatedLaborCost = project.members.reduce((sum: number, member: any) => {
+        const hourlyCost = member.employee.monthlyCost / 160;
+        return sum + (hourlyCost * 8 * businessDays);
+    }, 0);
+    const estimatedTotalCost = estimatedLaborCost + totalFixedMonthlyCost + project.fixedTotalCosts;
 
     // Calculate formatted duration for display
     const durationObj = intervalToDuration({
@@ -133,12 +142,24 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
                     )}
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow border-l-4 border-red-500">
-                    <h3 className="text-gray-500 font-medium">Total Cost</h3>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">€{totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                    <div className="text-xs text-gray-400 mt-1 space-y-1">
-                        <p>Labor: €{laborCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                        {<p>Fixed (Total): €{project.fixedTotalCosts.toLocaleString()}</p>}
-                        <p>Fixed (Monthly): €{project.fixedMonthlyCosts.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                    <h3 className="text-gray-500 font-medium">Project Costs</h3>
+                    <div className="mt-2 space-y-4">
+                        <div>
+                            <p className="text-xs text-gray-400">Actual Total Cost</p>
+                            <p className="text-2xl font-bold text-gray-900">€{totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                            <div className="text-xs text-gray-400 mt-1 space-y-1">
+                                <p>Labor (Work Logs): €{laborCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                            </div>
+                        </div>
+                        <div className="border-t pt-2">
+                            <p className="text-xs text-gray-400">Estimated Total Cost</p>
+                            <p className="text-xl font-bold text-gray-800">€{estimatedTotalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                            <p className="text-xs text-gray-400 mt-1">Labor (8h/day): €{estimatedLaborCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                        </div>
+                        <div className="border-t pt-2 text-xs text-gray-400 space-y-1">
+                            {project.fixedTotalCosts > 0 && <p>Fixed (Total): €{project.fixedTotalCosts.toLocaleString()}</p>}
+                            {project.fixedMonthlyCosts > 0 && <p>Fixed (Monthly): €{project.fixedMonthlyCosts.toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</p>}
+                        </div>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
