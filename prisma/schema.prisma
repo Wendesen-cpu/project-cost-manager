@@ -48,6 +48,9 @@ model Project {
   fixedMonthlyCosts   Float     @default(0)
   fixedTotalCosts     Float     @default(0)
   
+  ownerId             String
+  owner               Admin      @relation("ProjectOwner", fields: [ownerId], references: [id])
+  
   members             ProjectAssignment[]
   workLogs            WorkLog[]
   
@@ -105,6 +108,7 @@ model Admin {
   updatedAt DateTime @updatedAt
   
   approvedEmployees Employee[] @relation("AdminApprovals")
+  ownedProjects     Project[]  @relation("ProjectOwner")
 }
 
 model Otp {

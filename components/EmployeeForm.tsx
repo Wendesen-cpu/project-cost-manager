@@ -15,7 +15,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
 
     async function onSubmit(formData: FormData) {
         setLoading(true);
-        const data = {
+        const baseData = {
             firstName: formData.get('firstName') as string,
             lastName: formData.get('lastName') as string,
             monthlyCost: parseFloat(formData.get('monthlyCost') as string),
@@ -24,9 +24,13 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         };
 
         if (employee?.id) {
-            await updateEmployee(employee.id, data);
+            await updateEmployee(employee.id, baseData);
         } else {
-            await createEmployee(data);
+            await createEmployee({
+                ...baseData,
+                email: formData.get('email') as string,
+                password: formData.get('password') as string,
+            });
         }
 
         setLoading(false);
@@ -57,6 +61,27 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                 </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                    <input
+                        name="email"
+                        required={!employee}
+                        type="email"
+                        defaultValue={employee?.email}
+                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                </div>
+                {!employee && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Password</label>
+                        <input
+                            name="password"
+                            required
+                            type="password"
+                            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                    </div>
+                )}
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Monthly Cost (€)</label>
                     <input

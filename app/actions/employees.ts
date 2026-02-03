@@ -6,12 +6,17 @@ import { revalidatePath } from 'next/cache';
 export async function createEmployee(data: {
     firstName: string;
     lastName: string;
+    email: string;
+    password: string;
     monthlyCost: number;
     vacationDays: number;
     role?: string;
 }) {
     const employee = await prisma.employee.create({
-        data,
+        data: {
+            ...data,
+            role: data.role || 'EMPLOYEE',
+        },
     });
     revalidatePath('/admin/employees');
     return employee;

@@ -34,13 +34,15 @@ export async function registerAdmin(formData: FormData) {
         },
     });
 
+    const admin = await prisma.admin.findUnique({ where: { email } });
     if (status === 'PENDING') {
         return { success: 'Registration successful! Waiting for Super Admin approval.' };
-    } else {
+    } else if (admin) {
         // Auto-login if super admin
-        await createSession({ email, role, id: 'super-admin-id' }); // Retrieve actual ID in real app
+        await createSession({ id: admin.id, email: admin.email, role: admin.role });
         redirect('/admin');
     }
+    return { error: 'Admin not found after creation' };
 }
 
 export async function loginAdmin(formData: FormData) {

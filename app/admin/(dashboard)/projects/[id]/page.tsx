@@ -1,6 +1,7 @@
 import { prisma } from '@/app/lib/prisma';
 import { AssignEmployeeForm } from '@/components/AssignEmployeeForm';
 import { intervalToDuration, formatDuration, differenceInBusinessDays } from 'date-fns';
+import { getSession, SUPER_ADMIN_EMAIL } from '@/app/lib/auth';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -10,6 +11,7 @@ async function getProjectDetails(id: string) {
     return await prisma.project.findUnique({
         where: { id },
         include: {
+            owner: true,
             members: {
                 include: {
                     employee: true
@@ -30,6 +32,7 @@ async function getAvailableEmployees() {
 
 export default async function ProjectDetailsPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
+    const session = await getSession();
     const project = await getProjectDetails(params.id);
     const employees = await getAvailableEmployees();
 
@@ -63,6 +66,10 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
     }, 0);
     const estimatedTotalCost = estimatedLaborCost + totalFixedMonthlyCost + project.fixedTotalCosts;
 
+    const isOwner = session?.id === (project as any).ownerId;
+    const isSuperAdmin = session?.email === SUPER_ADMIN_EMAIL;
+    const canManage = isOwner || isSuperAdmin;
+
     // Calculate formatted duration for display
     const durationObj = intervalToDuration({
         start: project.startDate,
@@ -88,12 +95,14 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
                     <div>
                         <div className="flex items-center gap-4">
                             <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
-                            <Link
-                                href={`/admin/projects/${project.id}/edit`}
-                                className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md transition-colors"
-                            >
-                                Edit Details
-                            </Link>
+                            {canManage && (
+                                <Link
+                                    href={`/admin/projects/${project.id}/edit`}
+                                    className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md transition-colors"
+                                >
+                                    Edit Details
+                                </Link>
+                            )}
                         </div>
                         <p className="text-gray-500 mt-1">{project.description}</p>
                     </div>
@@ -128,6 +137,10 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
                                 ? `€${project.totalPrice?.toLocaleString()}`
                                 : `€${project.hourlyRate?.toLocaleString()}/hr`}
                         </span>
+                        <div>
+                            <span className="block text-gray-500">Owner</span>
+                            <span className="font-medium text-gray-900">{(project as any).owner?.email}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -177,7 +190,9 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
             <div className="bg-white p-6 rounded-lg shadow">
                 <h2 className="text-xl font-bold mb-4">Team</h2>
                 <div className="space-y-4">
-                    <AssignEmployeeForm projectId={project.id} employees={employees} />
+                    {canManage && (
+                        <AssignEmployeeForm projectId={project.id} employees={employees} />
+                    )}
 
                     <div className="mt-4">
                         <table className="min-w-full divide-y divide-gray-200">
