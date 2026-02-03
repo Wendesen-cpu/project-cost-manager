@@ -137,10 +137,10 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
                                 ? `€${project.totalPrice?.toLocaleString()}`
                                 : `€${project.hourlyRate?.toLocaleString()}/hr`}
                         </span>
-                        <div>
-                            <span className="block text-gray-500">Owner</span>
-                            <span className="font-medium text-gray-900">{(project as any).owner?.email}</span>
-                        </div>
+                    </div>
+                    <div>
+                        <span className="block text-gray-500">Owner</span>
+                        <span className="font-medium text-gray-900">{(project as any).owner?.email}</span>
                     </div>
                 </div>
             </div>

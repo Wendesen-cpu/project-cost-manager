@@ -37,6 +37,9 @@ export default function LoginPage() {
                     </button>
                     <div className="text-center mt-4 text-sm">
                         <a href="/admin/register" className="text-blue-600 hover:underline">Register new account</a>
+                        <div className="mt-2">
+                            <a href="/employee/login" className="text-gray-500 hover:text-gray-700">Go to Employee Portal</a>
+                        </div>
                     </div>
                 </form>
             </div>

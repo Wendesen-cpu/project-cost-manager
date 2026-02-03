@@ -40,9 +40,7 @@ export default function EmployeeLoginPage() {
                     </button>
 
                     <div className="mt-6 text-center space-y-2">
-                        <div>
-                            <Link href="/employee/register" className="text-sm text-blue-600 hover:underline font-medium">New Employee? Register here</Link>
-                        </div>
+
                         <div>
                             <Link href="/admin" className="text-sm text-gray-500 hover:underline">Go to Admin Panel</Link>
                         </div>

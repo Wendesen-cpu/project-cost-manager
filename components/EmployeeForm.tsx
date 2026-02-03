@@ -12,9 +12,12 @@ interface EmployeeFormProps {
 export function EmployeeForm({ employee }: EmployeeFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     async function onSubmit(formData: FormData) {
         setLoading(true);
+        setError(null);
+
         const baseData = {
             firstName: formData.get('firstName') as string,
             lastName: formData.get('lastName') as string,
@@ -23,23 +26,42 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             role: 'EMPLOYEE'
         };
 
-        if (employee?.id) {
-            await updateEmployee(employee.id, baseData);
-        } else {
-            await createEmployee({
-                ...baseData,
-                email: formData.get('email') as string,
-                password: formData.get('password') as string,
-            });
-        }
+        try {
+            if (employee?.id) {
+                await updateEmployee(employee.id, {
+                    ...baseData,
+                    password: formData.get('password') as string,
+                });
+                router.push('/admin/employees');
+                router.refresh();
+            } else {
+                const result = await createEmployee({
+                    ...baseData,
+                    email: formData.get('email') as string,
+                    password: formData.get('password') as string,
+                });
 
-        setLoading(false);
-        router.push('/admin/employees');
-        router.refresh();
+                if (result.error) {
+                    setError(result.error);
+                } else {
+                    router.push('/admin/employees');
+                    router.refresh();
+                }
+            }
+        } catch (err) {
+            setError('An unexpected error occurred');
+        } finally {
+            setLoading(false);
+        }
     }
 
     return (
         <form action={onSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow max-w-2xl">
+            {error && (
+                <div className="bg-red-50 text-red-600 p-3 rounded text-sm">
+                    {error}
+                </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">First Name</label>
@@ -71,17 +93,16 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                 </div>
-                {!employee && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Password</label>
-                        <input
-                            name="password"
-                            required
-                            type="password"
-                            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                    </div>
-                )}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Password</label>
+                    <input
+                        name="password"
+                        required
+                        type="text"
+                        defaultValue={employee?.password}
+                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Monthly Cost (€)</label>
                     <input

@@ -4,7 +4,7 @@ import { prisma } from '@/app/lib/prisma';
 import { getSession } from '@/app/lib/auth';
 import { redirect } from 'next/navigation';
 
-import { hashPassword, verifyPassword, createEmployeeSession } from '@/app/lib/auth';
+import { hashPassword, verifyPassword, decryptPassword, createEmployeeSession } from '@/app/lib/auth';
 
 export async function registerEmployee(formData: FormData) {
     const firstName = formData.get('firstName') as string;
@@ -43,7 +43,25 @@ export async function loginEmployee(formData: FormData) {
 
     const employee = await prisma.employee.findUnique({ where: { email } });
 
-    if (!employee || !(await verifyPassword(password, employee.password))) {
+    if (!employee) {
+        return { error: 'Invalid credentials' };
+    }
+
+    let isMatch = false;
+    try {
+        // Try decryption (new AES system)
+        const decrypted = decryptPassword(employee.password);
+        isMatch = decrypted === password;
+    } catch (e) {
+        // Fallback: Try hash verification (briefly used system)
+        isMatch = await verifyPassword(password, employee.password);
+        // Fallback 2: Try direct comparison (old plain-text system)
+        if (!isMatch) {
+            isMatch = employee.password === password;
+        }
+    }
+
+    if (!isMatch) {
         return { error: 'Invalid credentials' };
     }
 

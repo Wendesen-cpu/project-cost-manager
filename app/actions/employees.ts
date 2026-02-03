@@ -2,6 +2,7 @@
 
 import { prisma } from '@/app/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { encryptPassword, decryptPassword } from '@/app/lib/auth';
 
 export async function createEmployee(data: {
     firstName: string;
@@ -12,27 +13,45 @@ export async function createEmployee(data: {
     vacationDays: number;
     role?: string;
 }) {
-    const employee = await prisma.employee.create({
-        data: {
-            ...data,
-            role: data.role || 'EMPLOYEE',
-        },
-    });
-    revalidatePath('/admin/employees');
-    return employee;
+    try {
+        const encryptedPassword = encryptPassword(data.password);
+        const employee = await prisma.employee.create({
+            data: {
+                ...data,
+                password: encryptedPassword,
+                role: data.role || 'EMPLOYEE',
+                status: 'APPROVED',
+            },
+        });
+        revalidatePath('/admin/employees');
+        return { success: true, employee };
+    } catch (error: any) {
+        if (error.code === 'P2002') {
+            return { error: 'Email already exists' };
+        }
+        console.error('Error creating employee:', error);
+        return { error: 'Failed to create employee' };
+    }
 }
 
 export async function getEmployees() {
     return await prisma.employee.findMany({
-        where: { status: 'APPROVED' },
         orderBy: { createdAt: 'desc' },
     });
 }
 
 export async function getEmployee(id: string) {
-    return await prisma.employee.findUnique({
+    const employee = await prisma.employee.findUnique({
         where: { id },
     });
+    if (employee && employee.password) {
+        try {
+            employee.password = decryptPassword(employee.password);
+        } catch (e) {
+            // Keep as is if decryption fails (e.g. old plain-text password)
+        }
+    }
+    return employee;
 }
 
 export async function updateEmployee(id: string, data: {
@@ -41,10 +60,16 @@ export async function updateEmployee(id: string, data: {
     monthlyCost?: number;
     vacationDays?: number;
     role?: string;
+    password?: string;
 }) {
+    const updateData: any = { ...data };
+    if (data.password) {
+        updateData.password = encryptPassword(data.password);
+    }
+
     const employee = await prisma.employee.update({
         where: { id },
-        data,
+        data: updateData,
     });
     revalidatePath('/admin/employees');
     return employee;
