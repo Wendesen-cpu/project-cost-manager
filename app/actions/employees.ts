@@ -24,6 +24,12 @@ export async function getEmployees() {
     });
 }
 
+export async function getEmployee(id: string) {
+    return await prisma.employee.findUnique({
+        where: { id },
+    });
+}
+
 export async function updateEmployee(id: string, data: {
     firstName?: string;
     lastName?: string;

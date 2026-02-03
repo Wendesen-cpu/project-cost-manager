@@ -69,15 +69,15 @@ export default async function EmployeesPage() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        ${employee.monthlyCost.toLocaleString()}
+                                        €{employee.monthlyCost.toLocaleString()}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {employee.vacationDays}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <a href="#" className="text-indigo-600 hover:text-indigo-900">
+                                        <Link href={`/admin/employees/${employee.id}/edit`} className="text-indigo-600 hover:text-indigo-900">
                                             Edit
-                                        </a>
+                                        </Link>
                                     </td>
                                 </tr>
                             ))

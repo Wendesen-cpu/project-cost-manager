@@ -48,7 +48,7 @@ export default async function ProjectsPage() {
                                     </div>
                                     <div className="flex justify-between font-medium">
                                         <span>{project.paymentType === 'FIXED' ? 'Total Price:' : 'Hourly Rate:'}</span>
-                                        <span>${project.paymentType === 'FIXED' ? project.totalPrice?.toLocaleString() : project.hourlyRate}</span>
+                                        <span>€{project.paymentType === 'FIXED' ? project.totalPrice?.toLocaleString() : project.hourlyRate}</span>
                                     </div>
                                     <div className="flex justify-between text-xs text-gray-400 mt-2">
                                         <span>Members: {project.members.length}</span>

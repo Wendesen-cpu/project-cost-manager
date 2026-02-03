@@ -104,10 +104,10 @@ export default async function ProjectionsPage() {
                         {data.map((row) => (
                             <tr key={row.month}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.month}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${row.revenue.toLocaleString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${row.cost.toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">€{row.revenue.toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">€{row.cost.toLocaleString()}</td>
                                 <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${row.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    ${row.margin.toLocaleString()}
+                                    €{row.margin.toLocaleString()}
                                 </td>
                             </tr>
                         ))}

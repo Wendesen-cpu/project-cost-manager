@@ -54,7 +54,7 @@ export default async function AdminDashboardPage() {
                     </div>
                     <div>
                         <h3 className="text-lg font-medium text-gray-900">Est. Mth Revenue</h3>
-                        <p className="text-3xl font-bold text-gray-900 mt-1">${stats.monthlyRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                        <p className="text-3xl font-bold text-gray-900 mt-1">€{stats.monthlyRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                     </div>
                 </div>
             </div>

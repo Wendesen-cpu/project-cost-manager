@@ -1,10 +1,15 @@
 'use client';
 
-import { createEmployee } from '@/app/actions/employees';
+import { createEmployee, updateEmployee } from '@/app/actions/employees';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Employee } from '@prisma/client';
 
-export function EmployeeForm() {
+interface EmployeeFormProps {
+    employee?: Employee;
+}
+
+export function EmployeeForm({ employee }: EmployeeFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
 
@@ -18,9 +23,15 @@ export function EmployeeForm() {
             role: 'EMPLOYEE'
         };
 
-        await createEmployee(data);
+        if (employee?.id) {
+            await updateEmployee(employee.id, data);
+        } else {
+            await createEmployee(data);
+        }
+
         setLoading(false);
         router.push('/admin/employees');
+        router.refresh();
     }
 
     return (
@@ -32,6 +43,7 @@ export function EmployeeForm() {
                         name="firstName"
                         required
                         type="text"
+                        defaultValue={employee?.firstName}
                         className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                 </div>
@@ -41,17 +53,19 @@ export function EmployeeForm() {
                         name="lastName"
                         required
                         type="text"
+                        defaultValue={employee?.lastName}
                         className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Monthly Cost ($)</label>
+                    <label className="block text-sm font-medium text-gray-700">Monthly Cost (€)</label>
                     <input
                         name="monthlyCost"
                         required
                         type="number"
                         min="0"
                         step="0.01"
+                        defaultValue={employee?.monthlyCost}
                         className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                 </div>
@@ -62,7 +76,7 @@ export function EmployeeForm() {
                         required
                         type="number"
                         min="0"
-                        defaultValue={20}
+                        defaultValue={employee?.vacationDays ?? 20}
                         className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                 </div>
@@ -73,7 +87,7 @@ export function EmployeeForm() {
                     disabled={loading}
                     className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-blue-400"
                 >
-                    {loading ? 'Saving...' : 'Create Employee'}
+                    {loading ? 'Saving...' : (employee ? 'Update Employee' : 'Create Employee')}
                 </button>
             </div>
         </form>

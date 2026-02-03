@@ -1,5 +1,6 @@
 import { prisma } from '@/app/lib/prisma';
 import { AssignEmployeeForm } from '@/components/AssignEmployeeForm';
+import { intervalToDuration, formatDuration } from 'date-fns';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -52,6 +53,13 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
     const endDate = project.endDate || new Date();
     const durationMonths = Math.max(1, (endDate.getTime() - project.startDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
     const totalFixedMonthlyCost = project.fixedMonthlyCosts * durationMonths;
+
+    // Calculate formatted duration for display
+    const durationObj = intervalToDuration({
+        start: project.startDate,
+        end: endDate
+    });
+    const formattedDuration = formatDuration(durationObj, { format: ['years', 'months', 'days'] }) || '0 days';
     const totalCost = laborCost + totalFixedMonthlyCost + project.fixedTotalCosts;
 
     // Revenue
@@ -97,6 +105,10 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
                         <span className="font-medium">{project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Ongoing'}</span>
                     </div>
                     <div>
+                        <span className="block text-gray-500">Duration</span>
+                        <span className="font-medium">{formattedDuration}</span>
+                    </div>
+                    <div>
                         <span className="block text-gray-500">Payment Type</span>
                         <span className="font-medium">{project.paymentType}</span>
                     </div>
@@ -104,8 +116,8 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
                         <span className="block text-gray-500">Price</span>
                         <span className="font-medium">
                             {project.paymentType === 'FIXED'
-                                ? `$${project.totalPrice?.toLocaleString()}`
-                                : `$${project.hourlyRate?.toLocaleString()}/hr`}
+                                ? `€${project.totalPrice?.toLocaleString()}`
+                                : `€${project.hourlyRate?.toLocaleString()}/hr`}
                         </span>
                     </div>
                 </div>
@@ -115,24 +127,24 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
                     <h3 className="text-gray-500 font-medium">Total Revenue (Est)</h3>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">${revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">€{revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                     {project.paymentType === 'HOURLY' && (
                         <p className="text-xs text-gray-400 mt-1">Based on {totalHoursLogged} hours logged</p>
                     )}
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow border-l-4 border-red-500">
                     <h3 className="text-gray-500 font-medium">Total Cost</h3>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">${totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">€{totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                     <div className="text-xs text-gray-400 mt-1 space-y-1">
-                        <p>Labor: ${laborCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                        <p>Fixed (Total): ${project.fixedTotalCosts.toLocaleString()}</p>
-                        <p>Fixed (Monthly): ${totalFixedMonthlyCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                        <p>Labor: €{laborCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                        {<p>Fixed (Total): €{project.fixedTotalCosts.toLocaleString()}</p>}
+                        <p>Fixed (Monthly): €{project.fixedMonthlyCosts.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
                     <h3 className="text-gray-500 font-medium">Margin</h3>
                     <p className={`text-2xl font-bold mt-1 ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        ${margin.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        €{margin.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
                         ROI: {totalCost > 0 ? ((margin / totalCost) * 100).toFixed(1) : 0}%
@@ -162,7 +174,7 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
                                             {assignment.employee.firstName} {assignment.employee.lastName}
                                         </td>
                                         <td className="py-2 text-sm text-gray-500">{assignment.employee.role}</td>
-                                        <td className="py-2 text-sm text-gray-500">${assignment.employee.monthlyCost.toLocaleString()}</td>
+                                        <td className="py-2 text-sm text-gray-500">€{assignment.employee.monthlyCost.toLocaleString()}</td>
                                     </tr>
                                 ))}
                                 {project.members.length === 0 && (

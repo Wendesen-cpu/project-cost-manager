@@ -24,6 +24,9 @@ export function ProjectForm({ project }: ProjectFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [paymentType, setPaymentType] = useState(project?.paymentType || 'FIXED');
+    const [fixedCostType, setFixedCostType] = useState<'MONTHLY' | 'TOTAL'>(
+        project?.fixedMonthlyCosts && project.fixedMonthlyCosts > 0 ? 'MONTHLY' : 'TOTAL'
+    );
 
     async function onSubmit(formData: FormData) {
         setLoading(true);
@@ -37,8 +40,8 @@ export function ProjectForm({ project }: ProjectFormProps) {
             paymentType: formData.get('paymentType') as string,
             totalPrice: formData.get('totalPrice') ? parseFloat(formData.get('totalPrice') as string) : undefined,
             hourlyRate: formData.get('hourlyRate') ? parseFloat(formData.get('hourlyRate') as string) : undefined,
-            fixedMonthlyCosts: formData.get('fixedMonthlyCosts') ? parseFloat(formData.get('fixedMonthlyCosts') as string) : 0,
-            fixedTotalCosts: formData.get('fixedTotalCosts') ? parseFloat(formData.get('fixedTotalCosts') as string) : 0,
+            fixedMonthlyCosts: fixedCostType === 'MONTHLY' && formData.get('fixedMonthlyCosts') ? parseFloat(formData.get('fixedMonthlyCosts') as string) : 0,
+            fixedTotalCosts: fixedCostType === 'TOTAL' && formData.get('fixedTotalCosts') ? parseFloat(formData.get('fixedTotalCosts') as string) : 0,
         };
 
         if (project?.id) {
@@ -100,25 +103,39 @@ export function ProjectForm({ project }: ProjectFormProps) {
 
                 {paymentType === 'FIXED' ? (
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Total Project Price ($)</label>
+                        <label className="block text-sm font-medium text-gray-700">Total Project Price (€)</label>
                         <input name="totalPrice" type="number" step="0.01" defaultValue={project?.totalPrice || ''} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
                     </div>
                 ) : (
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Hourly Rate ($)</label>
+                        <label className="block text-sm font-medium text-gray-700">Hourly Rate (€)</label>
                         <input name="hourlyRate" type="number" step="0.01" defaultValue={project?.hourlyRate || ''} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
                     </div>
                 )}
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Fixed Monthly Costs ($)</label>
-                    <input name="fixedMonthlyCosts" type="number" step="0.01" defaultValue={project?.fixedMonthlyCosts ?? 0} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+                    <label className="block text-sm font-medium text-gray-700">Fixed Cost Type</label>
+                    <select
+                        value={fixedCostType}
+                        onChange={(e) => setFixedCostType(e.target.value as 'MONTHLY' | 'TOTAL')}
+                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                    >
+                        <option value="MONTHLY">Fixed Monthly Cost</option>
+                        <option value="TOTAL">Total Fixed Cost</option>
+                    </select>
                 </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Fixed Total Costs ($)</label>
-                    <input name="fixedTotalCosts" type="number" step="0.01" defaultValue={project?.fixedTotalCosts ?? 0} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
-                </div>
+                {fixedCostType === 'MONTHLY' ? (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Fixed Monthly Costs (€)</label>
+                        <input name="fixedMonthlyCosts" type="number" step="0.01" defaultValue={project?.fixedMonthlyCosts ?? 0} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+                    </div>
+                ) : (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Fixed Total Costs (€)</label>
+                        <input name="fixedTotalCosts" type="number" step="0.01" defaultValue={project?.fixedTotalCosts ?? 0} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+                    </div>
+                )}
 
             </div>
             <div className="flex justify-end">
