@@ -1,5 +1,6 @@
 import { prisma } from '@/app/lib/prisma';
 import { AssignEmployeeForm } from '@/components/AssignEmployeeForm';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -68,7 +69,15 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
             <div className="bg-white p-6 rounded-lg shadow">
                 <div className="flex justify-between items-start">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
+                        <div className="flex items-center gap-4">
+                            <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
+                            <Link
+                                href={`/admin/projects/${project.id}/edit`}
+                                className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md transition-colors"
+                            >
+                                Edit Details
+                            </Link>
+                        </div>
                         <p className="text-gray-500 mt-1">{project.description}</p>
                     </div>
                     <span className={`px-3 py-1 text-sm rounded-full ${project.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :

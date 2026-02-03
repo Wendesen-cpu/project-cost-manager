@@ -22,6 +22,27 @@ export async function createProject(data: {
     return project;
 }
 
+export async function updateProject(id: string, data: {
+    name: string;
+    description?: string;
+    startDate: Date;
+    endDate?: Date;
+    status?: string;
+    paymentType?: string;
+    totalPrice?: number;
+    hourlyRate?: number;
+    fixedMonthlyCosts?: number;
+    fixedTotalCosts?: number;
+}) {
+    const project = await prisma.project.update({
+        where: { id },
+        data,
+    });
+    revalidatePath('/admin/projects');
+    revalidatePath(`/admin/projects/${id}`);
+    return project;
+}
+
 export async function getProjects() {
     return await prisma.project.findMany({
         orderBy: { createdAt: 'desc' },
