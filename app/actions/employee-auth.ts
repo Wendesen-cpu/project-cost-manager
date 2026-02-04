@@ -90,3 +90,9 @@ export async function approveEmployee(employeeId: string) {
 
     return { success: true };
 }
+
+export async function logoutEmployee() {
+    const { logoutEmployee: logoutSession } = await import('@/app/lib/auth');
+    await logoutSession();
+    redirect('/employee/login');
+}

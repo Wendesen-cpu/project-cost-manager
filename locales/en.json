@@ -110,6 +110,32 @@
         "cost": "Cost",
         "margin": "Margin"
     },
+    "employeeDashboard": {
+        "welcome": "Welcome",
+        "title": "Employee Dashboard",
+        "subtitle": "Manage your time, request vacations, and track your projects with ease.",
+        "myStats": "My Stats",
+        "vacationRemaining": "Vacation Remaining",
+        "days": "Days",
+        "assignedProjects": "Assigned Projects",
+        "logActivity": "Log Activity",
+        "logWorkHours": "Log Work Hours",
+        "logVacation": "Log Vacation",
+        "recentActivity": "Recent Activity",
+        "noActivity": "No recent activity.",
+        "vacation": "Vacation",
+        "dayDeducted": "-1 Day",
+        "hrs": "hrs"
+    },
+    "employeeLogin": {
+        "title": "Employee Personal Portal",
+        "email": "Email Address",
+        "password": "Password",
+        "button": "Login to Portal",
+        "loggingIn": "Connecting...",
+        "goToAdmin": "Go to Admin Panel",
+        "welcomeBack": "Welcome Back"
+    },
     "common": {
         "loading": "Loading...",
         "logging": "Logging...",

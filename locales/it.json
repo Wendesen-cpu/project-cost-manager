@@ -110,6 +110,32 @@
         "cost": "Costi",
         "margin": "Margine"
     },
+    "employeeDashboard": {
+        "welcome": "Benvenuto",
+        "title": "Dashboard Dipendente",
+        "subtitle": "Gestisci il tuo tempo, richiedi ferie e monitora i tuoi progetti con facilità.",
+        "myStats": "Le mie Statistiche",
+        "vacationRemaining": "Ferie Rimanenti",
+        "days": "Giorni",
+        "assignedProjects": "Progetti Assegnati",
+        "logActivity": "Registra Attività",
+        "logWorkHours": "Registra Ore di Lavoro",
+        "logVacation": "Registra Ferie",
+        "recentActivity": "Attività Recente",
+        "noActivity": "Nessuna attività recente.",
+        "vacation": "Ferie",
+        "dayDeducted": "-1 Giorno",
+        "hrs": "ore"
+    },
+    "employeeLogin": {
+        "title": "Portale Personale Dipendente",
+        "email": "Indirizzo Email",
+        "password": "Password",
+        "button": "Accedi al Portale",
+        "loggingIn": "Connessione in corso...",
+        "goToAdmin": "Vai al Pannello Admin",
+        "welcomeBack": "Bentornato"
+    },
     "common": {
         "loading": "Caricamento...",
         "logging": "Registrazione...",
