@@ -88,6 +88,8 @@ export function ProjectForm({ project }: ProjectFormProps) {
                     </select>
                 </div>
 
+                <div></div>
+
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Payment Type</label>
                     <select

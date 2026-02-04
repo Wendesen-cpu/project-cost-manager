@@ -1,6 +1,6 @@
 import { prisma } from '@/app/lib/prisma';
 import { AssignEmployeeForm } from '@/components/AssignEmployeeForm';
-import { intervalToDuration, formatDuration, differenceInBusinessDays } from 'date-fns';
+import { intervalToDuration, formatDuration, differenceInBusinessDays, isAfter, isBefore } from 'date-fns';
 import { getSession, SUPER_ADMIN_EMAIL } from '@/app/lib/auth';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -60,9 +60,22 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
     // Estimated Cost Calculation
     // Business days between start and end date (inclusive)
     const businessDays = differenceInBusinessDays(endDate, project.startDate) + 1;
+
+    // Labor Cost Estimation: Sum of (Log.hours * Employee.hourlyCost) over their specific assignment period
     const estimatedLaborCost = project.members.reduce((sum: number, member: any) => {
         const hourlyCost = member.employee.monthlyCost / 160;
-        return sum + (hourlyCost * 8 * businessDays);
+
+        // Calculate overlap between project period and assignment period
+        const assignmentStart = new Date(member.startDate);
+        const assignmentEnd = member.endDate ? new Date(member.endDate) : endDate;
+
+        const effectiveStart = isAfter(assignmentStart, project.startDate) ? assignmentStart : project.startDate;
+        const effectiveEnd = isBefore(assignmentEnd, endDate) ? assignmentEnd : endDate;
+
+        if (isAfter(effectiveStart, effectiveEnd)) return sum;
+
+        const memberDays = differenceInBusinessDays(effectiveEnd, effectiveStart) + 1;
+        return sum + (hourlyCost * member.dailyHours * memberDays);
     }, 0);
     const estimatedTotalCost = estimatedLaborCost + totalFixedMonthlyCost + project.fixedTotalCosts;
 
@@ -96,12 +109,23 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
                         <div className="flex items-center gap-4">
                             <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
                             {canManage && (
-                                <Link
-                                    href={`/admin/projects/${project.id}/edit`}
-                                    className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md transition-colors"
-                                >
-                                    Edit Details
-                                </Link>
+                                <div className="flex gap-2">
+                                    <Link
+                                        href={`/admin/projects/${project.id}/edit`}
+                                        className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md transition-colors"
+                                    >
+                                        Edit Details
+                                    </Link>
+                                    <Link
+                                        href={`/admin/projects/${project.id}/gantt`}
+                                        className="text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-3 py-1 rounded-md transition-colors flex items-center gap-1"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                        Gantt View
+                                    </Link>
+                                </div>
                             )}
                         </div>
                         <p className="text-gray-500 mt-1">{project.description}</p>
@@ -167,7 +191,7 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
                         <div className="border-t pt-2">
                             <p className="text-xs text-gray-400">Estimated Total Cost</p>
                             <p className="text-xl font-bold text-gray-800">€{estimatedTotalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                            <p className="text-xs text-gray-400 mt-1">Labor (8h/day): €{estimatedLaborCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                            <p className="text-xs text-gray-400 mt-1">Labor (Assigned Hrs): €{estimatedLaborCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                         </div>
                         <div className="border-t pt-2 text-xs text-gray-400 space-y-1">
                             {project.fixedTotalCosts > 0 && <p>Fixed (Total): €{project.fixedTotalCosts.toLocaleString()}</p>}
@@ -200,6 +224,8 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
                                 <tr>
                                     <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Name</th>
                                     <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Role</th>
+                                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Period</th>
+                                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Daily Hrs</th>
                                     <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Monthly Cost</th>
                                 </tr>
                             </thead>
@@ -210,6 +236,10 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
                                             {assignment.employee.firstName} {assignment.employee.lastName}
                                         </td>
                                         <td className="py-2 text-sm text-gray-500">{assignment.employee.role}</td>
+                                        <td className="py-2 text-sm text-gray-500">
+                                            {new Date(assignment.startDate).toLocaleDateString()} - {assignment.endDate ? new Date(assignment.endDate).toLocaleDateString() : 'End of Project'}
+                                        </td>
+                                        <td className="py-2 text-sm text-gray-500">{assignment.dailyHours}h</td>
                                         <td className="py-2 text-sm text-gray-500">€{assignment.employee.monthlyCost.toLocaleString()}</td>
                                     </tr>
                                 ))}

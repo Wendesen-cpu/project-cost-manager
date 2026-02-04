@@ -50,13 +50,16 @@ model Project {
 }
 
 model ProjectAssignment {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   employeeId String
   projectId  String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  dailyHours Float     @default(8)
+  startDate  DateTime  @default(now())
+  endDate    DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([employeeId, projectId])
 }

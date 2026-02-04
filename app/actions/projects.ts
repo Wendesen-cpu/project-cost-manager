@@ -99,7 +99,13 @@ export async function getProjects() {
     });
 }
 
-export async function assignEmployeeToProject(projectId: string, employeeId: string) {
+export async function assignEmployeeToProject(
+    projectId: string,
+    employeeId: string,
+    dailyHours: number = 8,
+    startDate?: Date,
+    endDate?: Date
+) {
     const session = await getSession();
     const project = await prisma.project.findUnique({ where: { id: projectId } });
 
@@ -118,14 +124,27 @@ export async function assignEmployeeToProject(projectId: string, employeeId: str
         }
     });
 
-    if (existing) return existing;
+    const assignmentData = {
+        projectId,
+        employeeId,
+        dailyHours,
+        startDate: startDate || new Date(),
+        endDate: endDate || null
+    };
+
+    if (existing) {
+        // If exists, update daily hours and dates
+        return await prisma.projectAssignment.update({
+            where: { id: existing.id },
+            data: { dailyHours, startDate: assignmentData.startDate, endDate: assignmentData.endDate }
+        });
+    }
 
     const assignment = await prisma.projectAssignment.create({
-        data: {
-            projectId,
-            employeeId
-        }
+        data: assignmentData
     });
+
     revalidatePath('/admin/projects');
+    revalidatePath(`/admin/projects/${projectId}`);
     return assignment;
 }

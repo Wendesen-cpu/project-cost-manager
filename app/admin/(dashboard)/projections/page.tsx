@@ -1,6 +1,6 @@
 import { prisma } from '@/app/lib/prisma';
 import { ProjectionsChart } from '@/components/ProjectionsChart';
-import { addMonths, format, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { addMonths, format, startOfMonth, endOfMonth, differenceInBusinessDays, isAfter, isBefore } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,47 +26,48 @@ async function getProjectionData() {
         const monthEnd = endOfMonth(month);
         const monthLabel = format(month, 'MMM yyyy');
 
+        // Calculate business days in this specific month
+        const businessDaysInMonth = differenceInBusinessDays(monthEnd, monthStart) + 1;
+
         let monthlyRevenue = 0;
         let monthlyCost = 0;
 
         projects.forEach((project: any) => {
-            // Check if project is active in this month
-            // If project has no end date, assume active? Or use a default duration.
             const pStart = project.startDate;
-            const pEnd = project.endDate || addMonths(pStart, 12); // Default 1 year if undefined
+            const pEnd = project.endDate || addMonths(pStart, 12);
 
-            // Check overlap
             if (pStart <= monthEnd && pEnd >= monthStart) {
-                // Determine overlaps
-                // Simple logic: If active at all in month, count full month? Or pro-rata?
-                // Let's count full month for simplicity of projection visualization
-
                 // Revenue
                 if (project.paymentType === 'FIXED' && project.totalPrice) {
                     const durationMonths = Math.max(1, (pEnd.getTime() - pStart.getTime()) / (1000 * 60 * 60 * 24 * 30));
                     monthlyRevenue += project.totalPrice / durationMonths;
-                } else if (project.paymentType === 'HOURLY') {
-                    // Estimate: 4 weeks * 40 hours? Or avg logged?
-                    // Let's assume hardcoded estimation for hourly: 160 hours * rate
-                    monthlyRevenue += 160 * (project.hourlyRate || 0);
                 }
 
                 // Costs
-                // Fixed Project Costs
                 monthlyCost += project.fixedMonthlyCosts;
 
-                // Labor Costs (Members)
+                // Labor Costs & Hourly Revenue (Members)
                 project.members.forEach((member: any) => {
-                    // Assume full allocation? Or split by projects?
-                    // If employee is on 2 projects, do we double count?
-                    // "Costo mensile" is total cost to company.
-                    // We should probably partition this.
-                    // Implementation Plan said: "Cost of project based on assigned employees".
-                    // If an employee is assigned to 2 projects, usually they split time.
-                    // Let's assume 100% / number_of_projects_assigned?
-                    // That requires knowing all assignments for that employee.
-                    // Simplified: Add full monthly cost. (This represents "If I have this project, I need this person").
-                    monthlyCost += member.employee.monthlyCost;
+                    const assignmentStart = new Date(member.startDate);
+                    const assignmentEnd = member.endDate ? new Date(member.endDate) : pEnd;
+
+                    // Calculate overlap between month and assignment period
+                    const effectiveStart = isAfter(assignmentStart, monthStart) ? assignmentStart : monthStart;
+                    const effectiveEnd = isBefore(assignmentEnd, monthEnd) ? assignmentEnd : monthEnd;
+
+                    if (isAfter(effectiveStart, effectiveEnd)) return;
+
+                    const activeDays = differenceInBusinessDays(effectiveEnd, effectiveStart) + 1;
+                    const hoursInMonth = member.dailyHours * activeDays;
+
+                    // Cost contribution: (MonthlyCost / 160) * projected_hours
+                    const hourlyCost = member.employee.monthlyCost / 160;
+                    monthlyCost += hourlyCost * hoursInMonth;
+
+                    // Revenue contribution for hourly projects
+                    if (project.paymentType === 'HOURLY') {
+                        monthlyRevenue += hoursInMonth * (project.hourlyRate || 0);
+                    }
                 });
             }
         });

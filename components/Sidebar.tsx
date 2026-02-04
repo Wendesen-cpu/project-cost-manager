@@ -4,7 +4,7 @@ import { logout } from '@/app/actions/auth';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Briefcase, TrendingUp, Calendar } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, TrendingUp } from 'lucide-react';
 import clsx from 'clsx';
 
 const navItems = [
@@ -12,7 +12,6 @@ const navItems = [
     { name: 'Employees', href: '/admin/employees', icon: Users },
     { name: 'Projects', href: '/admin/projects', icon: Briefcase },
     { name: 'Projections', href: '/admin/projections', icon: TrendingUp },
-    { name: 'Gantt Chart', href: '/admin/gantt', icon: Calendar },
 ];
 
 export function Sidebar() {
