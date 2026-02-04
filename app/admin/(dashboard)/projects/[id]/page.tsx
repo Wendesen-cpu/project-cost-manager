@@ -1,9 +1,8 @@
 import { prisma } from '@/app/lib/prisma';
-import { AssignEmployeeForm } from '@/components/AssignEmployeeForm';
 import { intervalToDuration, formatDuration, differenceInBusinessDays, isAfter, isBefore } from 'date-fns';
 import { getSession, SUPER_ADMIN_EMAIL } from '@/app/lib/auth';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ProjectDetailsContent } from '@/components/ProjectDetailsContent';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,24 +47,17 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
     }, 0);
 
     // Fixed Costs
-    // Calculate months duration for fixed monthly costs
-    // If end date is future, project costs until now? Or total duration?
-    // "Costi fissi di progetto mensili o totali"
-    // Usually fixed monthly applies for the duration of the project. If active, maybe until today? 
-    // Let's assume duration = (EndDate or Now - StartDate)
     const endDate = project.endDate || new Date();
     const durationMonths = Math.max(1, (endDate.getTime() - project.startDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
     const totalFixedMonthlyCost = project.fixedMonthlyCosts * durationMonths;
 
     // Estimated Cost Calculation
-    // Business days between start and end date (inclusive)
     const businessDays = differenceInBusinessDays(endDate, project.startDate) + 1;
 
-    // Labor Cost Estimation: Sum of (Log.hours * Employee.hourlyCost) over their specific assignment period
+    // Labor Cost Estimation
     const estimatedLaborCost = project.members.reduce((sum: number, member: any) => {
         const hourlyCost = member.employee.monthlyCost / 160;
 
-        // Calculate overlap between project period and assignment period
         const assignmentStart = new Date(member.startDate);
         const assignmentEnd = member.endDate ? new Date(member.endDate) : endDate;
 
@@ -102,157 +94,19 @@ export default async function ProjectDetailsPage(props: { params: Promise<{ id: 
     const margin = revenue - totalCost;
 
     return (
-        <div className="space-y-6">
-            <div className="bg-white p-6 rounded-lg shadow">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <div className="flex items-center gap-4">
-                            <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
-                            {canManage && (
-                                <div className="flex gap-2">
-                                    <Link
-                                        href={`/admin/projects/${project.id}/edit`}
-                                        className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md transition-colors"
-                                    >
-                                        Edit Details
-                                    </Link>
-                                    <Link
-                                        href={`/admin/projects/${project.id}/gantt`}
-                                        className="text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-3 py-1 rounded-md transition-colors flex items-center gap-1"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                        </svg>
-                                        Gantt View
-                                    </Link>
-                                </div>
-                            )}
-                        </div>
-                        <p className="text-gray-500 mt-1">{project.description}</p>
-                    </div>
-                    <span className={`px-3 py-1 text-sm rounded-full ${project.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                        project.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                        {project.status}
-                    </span>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 text-sm">
-                    <div>
-                        <span className="block text-gray-500">Start Date</span>
-                        <span className="font-medium">{new Date(project.startDate).toLocaleDateString()}</span>
-                    </div>
-                    <div>
-                        <span className="block text-gray-500">End Date</span>
-                        <span className="font-medium">{project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Ongoing'}</span>
-                    </div>
-                    <div>
-                        <span className="block text-gray-500">Duration</span>
-                        <span className="font-medium">{formattedDuration}</span>
-                    </div>
-                    <div>
-                        <span className="block text-gray-500">Payment Type</span>
-                        <span className="font-medium">{project.paymentType}</span>
-                    </div>
-                    <div>
-                        <span className="block text-gray-500">Price</span>
-                        <span className="font-medium">
-                            {project.paymentType === 'FIXED'
-                                ? `€${project.totalPrice?.toLocaleString()}`
-                                : `€${project.hourlyRate?.toLocaleString()}/hr`}
-                        </span>
-                    </div>
-                    <div>
-                        <span className="block text-gray-500">Owner</span>
-                        <span className="font-medium text-gray-900">{(project as any).owner?.email}</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Financial Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
-                    <h3 className="text-gray-500 font-medium">Total Revenue (Est)</h3>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">€{revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                    {project.paymentType === 'HOURLY' && (
-                        <p className="text-xs text-gray-400 mt-1">Based on {totalHoursLogged} hours logged</p>
-                    )}
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow border-l-4 border-red-500">
-                    <h3 className="text-gray-500 font-medium">Project Costs</h3>
-                    <div className="mt-2 space-y-4">
-                        <div>
-                            <p className="text-xs text-gray-400">Actual Total Cost</p>
-                            <p className="text-2xl font-bold text-gray-900">€{totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                            <div className="text-xs text-gray-400 mt-1 space-y-1">
-                                <p>Labor (Work Logs): €{laborCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                            </div>
-                        </div>
-                        <div className="border-t pt-2">
-                            <p className="text-xs text-gray-400">Estimated Total Cost</p>
-                            <p className="text-xl font-bold text-gray-800">€{estimatedTotalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                            <p className="text-xs text-gray-400 mt-1">Labor (Assigned Hrs): €{estimatedLaborCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                        </div>
-                        <div className="border-t pt-2 text-xs text-gray-400 space-y-1">
-                            {project.fixedTotalCosts > 0 && <p>Fixed (Total): €{project.fixedTotalCosts.toLocaleString()}</p>}
-                            {project.fixedMonthlyCosts > 0 && <p>Fixed (Monthly): €{project.fixedMonthlyCosts.toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</p>}
-                        </div>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
-                    <h3 className="text-gray-500 font-medium">Margin</h3>
-                    <p className={`text-2xl font-bold mt-1 ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        €{margin.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                        ROI: {totalCost > 0 ? ((margin / totalCost) * 100).toFixed(1) : 0}%
-                    </p>
-                </div>
-            </div>
-
-            {/* Team Members */}
-            <div className="bg-white p-6 rounded-lg shadow">
-                <h2 className="text-xl font-bold mb-4">Team</h2>
-                <div className="space-y-4">
-                    {canManage && (
-                        <AssignEmployeeForm projectId={project.id} employees={employees} />
-                    )}
-
-                    <div className="mt-4">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead>
-                                <tr>
-                                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Name</th>
-                                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Role</th>
-                                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Period</th>
-                                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Daily Hrs</th>
-                                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Monthly Cost</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {project.members.map((assignment: any) => (
-                                    <tr key={assignment.id}>
-                                        <td className="py-2 text-sm text-gray-900">
-                                            {assignment.employee.firstName} {assignment.employee.lastName}
-                                        </td>
-                                        <td className="py-2 text-sm text-gray-500">{assignment.employee.role}</td>
-                                        <td className="py-2 text-sm text-gray-500">
-                                            {new Date(assignment.startDate).toLocaleDateString()} - {assignment.endDate ? new Date(assignment.endDate).toLocaleDateString() : 'End of Project'}
-                                        </td>
-                                        <td className="py-2 text-sm text-gray-500">{assignment.dailyHours}h</td>
-                                        <td className="py-2 text-sm text-gray-500">€{assignment.employee.monthlyCost.toLocaleString()}</td>
-                                    </tr>
-                                ))}
-                                {project.members.length === 0 && (
-                                    <tr>
-                                        <td colSpan={3} className="py-4 text-center text-gray-500 text-sm">No members assigned yet.</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <ProjectDetailsContent
+            project={project}
+            employees={employees}
+            revenue={revenue}
+            laborCost={laborCost}
+            totalCost={totalCost}
+            margin={margin}
+            estimatedLaborCost={estimatedLaborCost}
+            estimatedTotalCost={estimatedTotalCost}
+            totalFixedMonthlyCost={totalFixedMonthlyCost}
+            totalHoursLogged={totalHoursLogged}
+            formattedDuration={formattedDuration}
+            canManage={canManage}
+        />
     );
 }

@@ -3,7 +3,7 @@
 import { createEmployee, updateEmployee } from '@/app/actions/employees';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Employee } from '@prisma/client';
+import { useI18n } from '@/components/I18nContext';
 
 interface EmployeeFormProps {
     employee?: any; // Can be Employee or Admin
@@ -11,6 +11,7 @@ interface EmployeeFormProps {
 
 export function EmployeeForm({ employee }: EmployeeFormProps) {
     const router = useRouter();
+    const { t } = useI18n();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -64,7 +65,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">First Name</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('employees.firstName')}</label>
                     <input
                         name="firstName"
                         required
@@ -74,7 +75,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('employees.lastName')}</label>
                     <input
                         name="lastName"
                         required
@@ -84,7 +85,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('employees.email')}</label>
                     <input
                         name="email"
                         required={!employee}
@@ -94,7 +95,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Password</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('employees.password')}</label>
                     <input
                         name="password"
                         required
@@ -104,7 +105,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Monthly Cost (€)</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('employees.monthlyCost')}</label>
                     <input
                         name="monthlyCost"
                         required
@@ -116,7 +117,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Vacation Days (Remaining)</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('employees.vacationDays')}</label>
                     <input
                         name="vacationDays"
                         required
@@ -127,14 +128,14 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Role</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('employees.role')}</label>
                     <select
                         name="role"
                         defaultValue={employee?.role || 'EMPLOYEE'}
                         className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
-                        <option value="EMPLOYEE">Employee</option>
-                        <option value="PM">Project Manager (PM)</option>
+                        <option value="EMPLOYEE">{t('employees.roleEmployee')}</option>
+                        <option value="PM">{t('employees.roleManager')}</option>
                     </select>
                 </div>
             </div>
@@ -144,7 +145,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                     disabled={loading}
                     className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-blue-400"
                 >
-                    {loading ? 'Saving...' : (employee ? 'Update User' : 'Create User')}
+                    {loading ? t('employees.saving') : (employee ? t('employees.update') : t('employees.create'))}
                 </button>
             </div>
         </form>

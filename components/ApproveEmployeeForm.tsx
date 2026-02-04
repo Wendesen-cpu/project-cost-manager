@@ -2,8 +2,10 @@
 
 import { approveEmployee } from '@/app/actions/employee-auth';
 import { useState } from 'react';
+import { useI18n } from '@/components/I18nContext';
 
 export function ApproveEmployeeForm({ employeeId }: { employeeId: string }) {
+    const { t } = useI18n();
     const [approved, setApproved] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -19,7 +21,7 @@ export function ApproveEmployeeForm({ employeeId }: { employeeId: string }) {
         }
     };
 
-    if (approved) return <span className="text-green-600 font-medium">Approved</span>;
+    if (approved) return <span className="text-green-600 font-medium">{t('dashboard.approved')}</span>;
 
     return (
         <button
@@ -27,7 +29,7 @@ export function ApproveEmployeeForm({ employeeId }: { employeeId: string }) {
             disabled={loading}
             className="text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm disabled:opacity-50"
         >
-            {loading ? 'Approving...' : 'Approve'}
+            {loading ? t('dashboard.approving') : t('dashboard.approve')}
         </button>
     );
 }
