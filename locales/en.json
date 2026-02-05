@@ -156,6 +156,16 @@
         "logVacationSuccess": "Successfully logged vacation!",
         "error": "Something went wrong. Please try again."
     },
+    "adminLogin": {
+        "title": "Admin Management Panel",
+        "email": "Admin Email",
+        "password": "Password",
+        "button": "Login to Admin",
+        "loggingIn": "Authenticating...",
+        "goToEmployee": "Go to Employee Portal",
+        "welcomeBack": "System Administrator",
+        "superAdminNote": "Super Admin can manage all accounts."
+    },
     "common": {
         "loading": "Loading...",
         "logging": "Logging...",
