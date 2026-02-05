@@ -1,9 +1,12 @@
 'use client';
 
+import { AIChat } from '@/components/AIChat';
+
 import { LogTimeForm } from '@/components/LogTimeForm';
 import { LogVacationForm } from '@/components/LogVacationForm';
 import { useI18n } from '@/components/I18nContext';
 import { logoutEmployee } from '@/app/actions/employee-auth';
+import { deleteWorkLog, deleteVacationLog } from '@/app/actions/worklogs';
 import { useRouter } from 'next/navigation';
 import {
     Calendar,
@@ -14,7 +17,9 @@ import {
     CheckCircle2,
     Palmtree,
     Activity,
-    PlusCircle
+    PlusCircle,
+    Trash2,
+    Loader2
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
@@ -27,11 +32,32 @@ export function EmployeeDashboardContent({ employee }: EmployeeDashboardContentP
     const { t, language, setLanguage } = useI18n();
     const router = useRouter();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
         await logoutEmployee();
         router.push('/employee/login');
+    };
+
+    const handleDeleteWorkLog = async (logId: string) => {
+        if (!confirm(t('common.deleteConfirm'))) return;
+        setIsDeleting(logId);
+        try {
+            await deleteWorkLog(logId, employee.id);
+        } finally {
+            setIsDeleting(null);
+        }
+    };
+
+    const handleDeleteVacationLog = async (vacId: string) => {
+        if (!confirm(t('common.deleteConfirm'))) return;
+        setIsDeleting(vacId);
+        try {
+            await deleteVacationLog(vacId, employee.id);
+        } finally {
+            setIsDeleting(null);
+        }
     };
 
     return (
@@ -279,9 +305,19 @@ export function EmployeeDashboardContent({ employee }: EmployeeDashboardContentP
                                                                             </span>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="text-right">
-                                                                        <span className="text-lg font-black text-slate-900">{item.hours}</span>
-                                                                        <span className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">{t('employeeDashboard.hrs')}</span>
+                                                                    <div className="flex items-center gap-4">
+                                                                        <div className="text-right">
+                                                                            <span className="text-lg font-black text-slate-900">{item.hours}</span>
+                                                                            <span className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">{t('employeeDashboard.hrs')}</span>
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={(e) => { e.preventDefault(); handleDeleteWorkLog(item.id); }}
+                                                                            disabled={isDeleting === item.id}
+                                                                            className="p-2 text-slate-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 disabled:opacity-50"
+                                                                            title={t('common.delete')}
+                                                                        >
+                                                                            {isDeleting === item.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                                                        </button>
                                                                     </div>
                                                                 </div>
                                                             ) : (
@@ -298,8 +334,18 @@ export function EmployeeDashboardContent({ employee }: EmployeeDashboardContentP
                                                                             </span>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="text-right">
-                                                                        <span className="text-sm font-black text-orange-600">{t('employeeDashboard.dayDeducted')}</span>
+                                                                    <div className="flex items-center gap-4">
+                                                                        <div className="text-right">
+                                                                            <span className="text-sm font-black text-orange-600">{t('employeeDashboard.dayDeducted')}</span>
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={(e) => { e.preventDefault(); handleDeleteVacationLog(item.id); }}
+                                                                            disabled={isDeleting === item.id}
+                                                                            className="p-2 text-orange-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 disabled:opacity-50"
+                                                                            title={t('common.delete')}
+                                                                        >
+                                                                            {isDeleting === item.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                                                        </button>
                                                                     </div>
                                                                 </div>
                                                             )
@@ -315,6 +361,7 @@ export function EmployeeDashboardContent({ employee }: EmployeeDashboardContentP
                     </div>
                 </div>
             </div>
+            <AIChat />
         </div>
     );
 }

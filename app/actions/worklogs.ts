@@ -40,6 +40,31 @@ export async function logVacation(data: {
     return vacation;
 }
 
+export async function deleteWorkLog(id: string, employeeId: string) {
+    await prisma.workLog.delete({
+        where: { id }
+    });
+    revalidatePath(`/employee/${employeeId}`);
+}
+
+export async function deleteVacationLog(id: string, employeeId: string) {
+    await prisma.vacationLog.delete({
+        where: { id }
+    });
+
+    // Refund vacation day
+    await prisma.employee.update({
+        where: { id: employeeId },
+        data: {
+            vacationDays: {
+                increment: 1
+            }
+        }
+    });
+
+    revalidatePath(`/employee/${employeeId}`);
+}
+
 export async function getEmployeeDashboardData(employeeId: string) {
     const employee = await prisma.employee.findUnique({
         where: { id: employeeId },
