@@ -18,38 +18,69 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-export function AIChat() {
+export function AIChat({ onRefresh }: { onRefresh?: () => void }) {
     const { t } = useI18n();
     const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [input, setInput] = useState('');
     const hasCalledToolInCurrentRequest = useRef(false);
+    const processedMessageIds = useRef<Set<string>>(new Set());
 
     const { messages, sendMessage, status, error, stop } = useChat({
         id: 'main-chat',
         transport: new DefaultChatTransport({ api: '/api/chat' }),
         onFinish: ({ messages: updatedMessages }) => {
-            console.log('Chat finished. Tool called in this cycle:', hasCalledToolInCurrentRequest.current);
+            const anyToolCalls = updatedMessages.some(m => {
+                const parts = (m as any).parts || [];
+                return (m as any).toolInvocations?.length ||
+                    parts.some((p: any) => p.type === 'tool-invocation' || p.toolInvocation || p.type?.startsWith('tool-'));
+            });
 
-            // Check message parts directly as a secondary check
-            const lastMessage = updatedMessages[updatedMessages.length - 1];
-            const containsTools = (lastMessage as any).parts.some((p: any) => p.type === 'tool-invocation');
-
-            if (hasCalledToolInCurrentRequest.current || containsTools) {
-                console.log('Triggering dashboard refresh...');
-                router.refresh();
-
-                // Force a reload after a short delay to ensure everything is captured
+            if (hasCalledToolInCurrentRequest.current || anyToolCalls) {
                 setTimeout(() => {
-                    console.log('Forcing full page reload for data consistency...');
                     router.refresh();
+                    if (onRefresh) onRefresh();
                     hasCalledToolInCurrentRequest.current = false;
-                }, 1000);
+                }, 2000);
             }
         }
     });
 
-    // Reset tool tracker when starting a new message
+    // Robust proactive refresh watcher
+    useEffect(() => {
+        let newToolFound = false;
+
+        messages.forEach(m => {
+            const parts = (m as any).parts || [];
+            const hasResult = (m as any).toolInvocations?.some((ti: any) => ti.state === 'result') ||
+                parts.some((p: any) =>
+                    (p.type === 'tool-invocation' && p.toolInvocation?.state === 'result') ||
+                    (p.type?.startsWith('tool-') && (p.state === 'output-available' || p.output))
+                );
+
+            if (hasResult && !processedMessageIds.current.has(m.id)) {
+                processedMessageIds.current.add(m.id);
+                newToolFound = true;
+            }
+        });
+
+        if (newToolFound) {
+            if (onRefresh) {
+                onRefresh();
+            } else {
+                router.refresh();
+            }
+            hasCalledToolInCurrentRequest.current = true;
+
+            // Second refresh for insurance
+            setTimeout(() => {
+                if (onRefresh) onRefresh();
+                router.refresh();
+            }, 1000);
+        }
+    }, [messages, router, onRefresh]);
+
+    // Reset tool tracker for clean status logging
     useEffect(() => {
         if (status === 'submitted') {
             hasCalledToolInCurrentRequest.current = false;
@@ -57,7 +88,9 @@ export function AIChat() {
         if (status === 'streaming') {
             const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant');
             if (lastAssistantMessage) {
-                const hasTools = (lastAssistantMessage as any).parts.some((p: any) => p.type === 'tool-invocation');
+                const parts = (lastAssistantMessage as any).parts || [];
+                const hasTools = (lastAssistantMessage as any).toolInvocations?.length ||
+                    parts.some((p: any) => p.type === 'tool-invocation' || p.type?.startsWith('tool-'));
                 if (hasTools) hasCalledToolInCurrentRequest.current = true;
             }
         }

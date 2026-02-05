@@ -12,7 +12,8 @@ export async function logWork(data: {
     const log = await prisma.workLog.create({
         data,
     });
-    revalidatePath(`/employee/${data.employeeId}`);
+    revalidatePath(`/employee/${data.employeeId}`, 'page');
+    revalidatePath(`/employee/${data.employeeId}`, 'layout');
     return log;
 }
 
@@ -36,7 +37,8 @@ export async function logVacation(data: {
         }
     });
 
-    revalidatePath(`/employee/${data.employeeId}`);
+    revalidatePath(`/employee/${data.employeeId}`, 'page');
+    revalidatePath(`/employee/${data.employeeId}`, 'layout');
     return vacation;
 }
 
@@ -44,7 +46,18 @@ export async function deleteWorkLog(id: string, employeeId: string) {
     await prisma.workLog.delete({
         where: { id }
     });
-    revalidatePath(`/employee/${employeeId}`);
+    revalidatePath(`/employee/${employeeId}`, 'page');
+    revalidatePath(`/employee/${employeeId}`, 'layout');
+}
+
+export async function updateWorkLog(id: string, employeeId: string, data: { hours?: number, date?: Date }) {
+    const updated = await prisma.workLog.update({
+        where: { id },
+        data
+    });
+    revalidatePath(`/employee/${employeeId}`, 'page');
+    revalidatePath(`/employee/${employeeId}`, 'layout');
+    return updated;
 }
 
 export async function deleteVacationLog(id: string, employeeId: string) {
@@ -62,7 +75,8 @@ export async function deleteVacationLog(id: string, employeeId: string) {
         }
     });
 
-    revalidatePath(`/employee/${employeeId}`);
+    revalidatePath(`/employee/${employeeId}`, 'page');
+    revalidatePath(`/employee/${employeeId}`, 'layout');
 }
 
 export async function getEmployeeDashboardData(employeeId: string) {
