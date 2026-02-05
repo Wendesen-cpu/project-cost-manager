@@ -6,7 +6,7 @@ import { LogTimeForm } from '@/components/LogTimeForm';
 import { LogVacationForm } from '@/components/LogVacationForm';
 import { useI18n } from '@/components/I18nContext';
 import { logoutEmployee } from '@/app/actions/employee-auth';
-import { deleteWorkLog, deleteVacationLog } from '@/app/actions/worklogs';
+import { deleteWorkLog, deleteVacationLog, getEmployeeDashboardData } from '@/app/actions/worklogs';
 import { useRouter } from 'next/navigation';
 import {
     Calendar,
@@ -21,18 +21,28 @@ import {
     Trash2,
     Loader2
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import clsx from 'clsx';
 
 interface EmployeeDashboardContentProps {
     employee: any;
 }
 
-export function EmployeeDashboardContent({ employee }: EmployeeDashboardContentProps) {
+export function EmployeeDashboardContent({ employee: initialEmployee }: EmployeeDashboardContentProps) {
     const { t, language, setLanguage } = useI18n();
     const router = useRouter();
+    const [employee, setEmployee] = useState(initialEmployee);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
+    const refreshDashboard = useCallback(async () => {
+        console.log('[Dashboard] Refreshing data...');
+        const updatedData = await getEmployeeDashboardData(initialEmployee.id);
+        if (updatedData) {
+            setEmployee(updatedData);
+            console.log('[Dashboard] Data updated on-the-fly.');
+        }
+    }, [initialEmployee.id]);
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
@@ -45,6 +55,7 @@ export function EmployeeDashboardContent({ employee }: EmployeeDashboardContentP
         setIsDeleting(logId);
         try {
             await deleteWorkLog(logId, employee.id);
+            await refreshDashboard();
         } finally {
             setIsDeleting(null);
         }
@@ -55,6 +66,7 @@ export function EmployeeDashboardContent({ employee }: EmployeeDashboardContentP
         setIsDeleting(vacId);
         try {
             await deleteVacationLog(vacId, employee.id);
+            await refreshDashboard();
         } finally {
             setIsDeleting(null);
         }
@@ -175,7 +187,7 @@ export function EmployeeDashboardContent({ employee }: EmployeeDashboardContentP
                                         <ChevronDown size={18} className="text-slate-400 transition-transform group-open:rotate-180" />
                                     </summary>
                                     <div className="px-6 pb-6 pt-2">
-                                        <LogTimeForm employeeId={employee.id} projects={employee.projects} />
+                                        <LogTimeForm employeeId={employee.id} projects={employee.projects} onSuccess={refreshDashboard} />
                                     </div>
                                 </details>
 
@@ -190,7 +202,7 @@ export function EmployeeDashboardContent({ employee }: EmployeeDashboardContentP
                                         <ChevronDown size={18} className="text-slate-400 transition-transform group-open:rotate-180" />
                                     </summary>
                                     <div className="px-6 pb-6 pt-2">
-                                        <LogVacationForm employeeId={employee.id} />
+                                        <LogVacationForm employeeId={employee.id} onSuccess={refreshDashboard} />
                                     </div>
                                 </details>
                             </div>
@@ -361,7 +373,7 @@ export function EmployeeDashboardContent({ employee }: EmployeeDashboardContentP
                     </div>
                 </div>
             </div>
-            <AIChat />
+            <AIChat onRefresh={refreshDashboard} />
         </div>
     );
 }

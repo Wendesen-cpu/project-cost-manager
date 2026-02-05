@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useI18n } from '@/components/I18nContext';
 
-export function LogTimeForm({ employeeId, projects }: { employeeId: string; projects: any[] }) {
+export function LogTimeForm({ employeeId, projects, onSuccess }: { employeeId: string; projects: any[]; onSuccess?: () => void }) {
     const router = useRouter();
     const { t } = useI18n();
     const [loading, setLoading] = useState(false);
@@ -19,7 +19,11 @@ export function LogTimeForm({ employeeId, projects }: { employeeId: string; proj
             hours: parseFloat(formData.get('hours') as string)
         });
         setLoading(false);
-        router.refresh();
+        if (onSuccess) {
+            onSuccess();
+        } else {
+            router.refresh();
+        }
     }
 
     return (
