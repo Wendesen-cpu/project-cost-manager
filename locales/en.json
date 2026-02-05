@@ -120,6 +120,7 @@
         "assignedProjects": "Assigned Projects",
         "logActivity": "Log Activity",
         "logWorkHours": "Log Work Hours",
+        "logWorKHoursInShort": "Work",
         "logVacation": "Log Vacation",
         "recentActivity": "Recent Activity",
         "noActivity": "No recent activity.",
@@ -146,11 +147,21 @@
         "welcomeBack": "System Administrator",
         "superAdminNote": "Super Admin can manage all accounts."
     },
+    "aiChat": {
+        "button": "AI Assistant",
+        "title": "Jarvis AI Assistant",
+        "placeholder": "Type your request...",
+        "welcomeMessage": "Hi! I can help you log work hours or vacations. Just ask!",
+        "logWorkSuccess": "Successfully logged hours!",
+        "logVacationSuccess": "Successfully logged vacation!",
+        "error": "Something went wrong. Please try again."
+    },
     "common": {
         "loading": "Loading...",
         "logging": "Logging...",
         "save": "Save",
-        "cancel": "Annulla",
+        "cancel": "Cancel",
+        "delete": "Delete",
         "optional": "Optional",
         "name": "Name",
         "start": "Start",

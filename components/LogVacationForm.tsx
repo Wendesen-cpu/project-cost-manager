@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useI18n } from '@/components/I18nContext';
 
-export function LogVacationForm({ employeeId }: { employeeId: string }) {
+export function LogVacationForm({ employeeId, onSuccess }: { employeeId: string; onSuccess?: () => void }) {
     const router = useRouter();
     const { t } = useI18n();
     const [loading, setLoading] = useState(false);
@@ -17,7 +17,11 @@ export function LogVacationForm({ employeeId }: { employeeId: string }) {
             date: new Date(formData.get('date') as string),
         });
         setLoading(false);
-        router.refresh();
+        if (onSuccess) {
+            onSuccess();
+        } else {
+            router.refresh();
+        }
     }
 
     return (

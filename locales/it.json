@@ -120,6 +120,7 @@
         "assignedProjects": "Progetti Assegnati",
         "logActivity": "Registra Attività",
         "logWorkHours": "Registra Ore di Lavoro",
+        "logWorKHoursInShort": "Lavoro",
         "logVacation": "Registra Ferie",
         "recentActivity": "Attività Recente",
         "noActivity": "Nessuna attività recente.",
@@ -146,11 +147,21 @@
         "welcomeBack": "Amministratore di Sistema",
         "superAdminNote": "Il Super Admin può gestire tutti gli account."
     },
+    "aiChat": {
+        "button": "Assistente AI",
+        "title": "Assistente Jarvis AI",
+        "placeholder": "Scrivi la tua richiesta...",
+        "welcomeMessage": "Ciao! Posso aiutarti a registrare ore di lavoro o ferie. Chiedi pure!",
+        "logWorkSuccess": "Ore registrate con successo!",
+        "logVacationSuccess": "Ferie registrate con successo!",
+        "error": "Qualcosa è andato storto. Riprova."
+    },
     "common": {
         "loading": "Caricamento...",
         "logging": "Registrazione...",
         "save": "Salva",
         "cancel": "Annulla",
+        "delete": "Elimina",
         "optional": "Opzionale",
         "name": "Nome",
         "start": "Inizio",
