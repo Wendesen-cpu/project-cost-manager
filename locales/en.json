@@ -120,6 +120,7 @@
         "assignedProjects": "Assigned Projects",
         "logActivity": "Log Activity",
         "logWorkHours": "Log Work Hours",
+        "logWorKHoursInShort": "Work",
         "logVacation": "Log Vacation",
         "recentActivity": "Recent Activity",
         "noActivity": "No recent activity.",
