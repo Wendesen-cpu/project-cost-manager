@@ -136,6 +136,16 @@
         "goToAdmin": "Go to Admin Panel",
         "welcomeBack": "Welcome Back"
     },
+    "adminLogin": {
+        "title": "Admin Management Panel",
+        "email": "Admin Email",
+        "password": "Password",
+        "button": "Login to Admin",
+        "loggingIn": "Authenticating...",
+        "goToEmployee": "Go to Employee Portal",
+        "welcomeBack": "System Administrator",
+        "superAdminNote": "Super Admin can manage all accounts."
+    },
     "common": {
         "loading": "Loading...",
         "logging": "Logging...",

@@ -136,6 +136,16 @@
         "goToAdmin": "Vai al Pannello Admin",
         "welcomeBack": "Bentornato"
     },
+    "adminLogin": {
+        "title": "Pannello di Gestione Admin",
+        "email": "Email Admin",
+        "password": "Password",
+        "button": "Accedi come Admin",
+        "loggingIn": "Autenticazione...",
+        "goToEmployee": "Vai al Portale Dipendenti",
+        "welcomeBack": "Amministratore di Sistema",
+        "superAdminNote": "Il Super Admin può gestire tutti gli account."
+    },
     "common": {
         "loading": "Caricamento...",
         "logging": "Registrazione...",
