@@ -126,7 +126,9 @@
         "noActivity": "Nessuna attività recente.",
         "vacation": "Ferie",
         "dayDeducted": "-1 Giorno",
-        "hrs": "ore"
+        "hrs": "ore",
+        "monthlyCalendar": "Calendario Mensile",
+        "logWorkHoursShort": "Ore di Lavoro"
     },
     "employeeLogin": {
         "title": "Portale Personale Dipendente",
@@ -173,6 +175,17 @@
         "selectProject": "Seleziona Progetto...",
         "logHours": "Registra Ore",
         "logVacation": "Registra Giorno di Ferie",
-        "vacationNote": "Nota: Questo detrarrà 1 giorno dal tuo saldo."
+        "vacationNote": "Nota: Questo detrarrà 1 giorno dal tuo saldo.",
+        "today": "Oggi",
+        "back": "Indietro",
+        "days": {
+            "mon": "Lun",
+            "tue": "Mar",
+            "wed": "Mer",
+            "thu": "Gio",
+            "fri": "Ven",
+            "sat": "Sab",
+            "sun": "Dom"
+        }
     }
 }

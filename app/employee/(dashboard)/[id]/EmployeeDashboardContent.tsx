@@ -4,6 +4,7 @@ import { AIChat } from '@/components/AIChat';
 
 import { LogTimeForm } from '@/components/LogTimeForm';
 import { LogVacationForm } from '@/components/LogVacationForm';
+import { MonthlyCalendar } from '@/components/MonthlyCalendar';
 import { useI18n } from '@/components/I18nContext';
 import { logoutEmployee } from '@/app/actions/employee-auth';
 import { deleteWorkLog, deleteVacationLog, getEmployeeDashboardData } from '@/app/actions/worklogs';
@@ -209,167 +210,183 @@ export function EmployeeDashboardContent({ employee: initialEmployee }: Employee
                         </div>
                     </div>
 
-                    {/* Right Column: Recent Activity */}
-                    <div className="lg:col-span-2 space-y-4">
-                        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
-                            <Clock size={14} />
-                            {t('employeeDashboard.recentActivity')}
-                        </h3>
+                    {/* Right Column: Calendar and Recent Activity */}
+                    <div className="lg:col-span-2 space-y-8">
+                        <section>
+                            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1 mb-4">
+                                <Calendar size={14} />
+                                {t('employeeDashboard.monthlyCalendar') || 'Monthly Calendar'}
+                            </h3>
+                            <MonthlyCalendar
+                                employeeId={employee.id}
+                                projects={employee.projects}
+                                workLogs={employee.workLogs}
+                                vacations={employee.vacations}
+                                onSuccess={refreshDashboard}
+                            />
+                        </section>
 
-                        <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200/60 overflow-hidden">
-                            <div className="p-2">
-                                <div className="space-y-1">
-                                    {(() => {
-                                        const groups: { [key: string]: { monthIndex: number, monthName: string, year: number, items: any[], workHours: number, vacationHours: number, totalHours: number } } = {};
+                        <section className="space-y-4">
+                            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
+                                <Clock size={14} />
+                                {t('employeeDashboard.recentActivity')}
+                            </h3>
 
-                                        // Process Work Logs
-                                        employee.workLogs.forEach((log: any) => {
-                                            const date = new Date(log.date);
-                                            const monthKey = `${date.getMonth()}-${date.getFullYear()}`;
-                                            if (!groups[monthKey]) {
-                                                groups[monthKey] = {
-                                                    monthIndex: date.getMonth(),
-                                                    monthName: date.toLocaleString(language === 'it' ? 'it-IT' : 'en-US', { month: 'long' }),
-                                                    year: date.getFullYear(),
-                                                    items: [],
-                                                    workHours: 0,
-                                                    vacationHours: 0,
-                                                    totalHours: 0
-                                                };
+                            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200/60 overflow-hidden">
+                                <div className="p-2">
+                                    <div className="space-y-1">
+                                        {(() => {
+                                            const groups: { [key: string]: { monthIndex: number, monthName: string, year: number, items: any[], workHours: number, vacationHours: number, totalHours: number } } = {};
+
+                                            // Process Work Logs
+                                            employee.workLogs.forEach((log: any) => {
+                                                const date = new Date(log.date);
+                                                const monthKey = `${date.getMonth()}-${date.getFullYear()}`;
+                                                if (!groups[monthKey]) {
+                                                    groups[monthKey] = {
+                                                        monthIndex: date.getMonth(),
+                                                        monthName: date.toLocaleString(language === 'it' ? 'it-IT' : 'en-US', { month: 'long' }),
+                                                        year: date.getFullYear(),
+                                                        items: [],
+                                                        workHours: 0,
+                                                        vacationHours: 0,
+                                                        totalHours: 0
+                                                    };
+                                                }
+                                                groups[monthKey].items.push({ ...log, type: 'work' });
+                                                groups[monthKey].workHours += log.hours;
+                                                groups[monthKey].totalHours += log.hours;
+                                            });
+
+                                            // Process Vacations
+                                            employee.vacations.forEach((vac: any) => {
+                                                const date = new Date(vac.date);
+                                                const monthKey = `${date.getMonth()}-${date.getFullYear()}`;
+                                                if (!groups[monthKey]) {
+                                                    groups[monthKey] = {
+                                                        monthIndex: date.getMonth(),
+                                                        monthName: date.toLocaleString(language === 'it' ? 'it-IT' : 'en-US', { month: 'long' }),
+                                                        year: date.getFullYear(),
+                                                        items: [],
+                                                        workHours: 0,
+                                                        vacationHours: 0,
+                                                        totalHours: 0
+                                                    };
+                                                }
+                                                groups[monthKey].items.push({ ...vac, type: 'vacation' });
+                                                // 1 vacation day = 8 hours for the total
+                                                groups[monthKey].vacationHours += 8;
+                                                groups[monthKey].totalHours += 8;
+                                            });
+
+                                            const sortedGroups = Object.values(groups).sort((a, b) => {
+                                                if (a.year !== b.year) return b.year - a.year;
+                                                return b.monthIndex - a.monthIndex;
+                                            });
+
+                                            if (sortedGroups.length === 0) {
+                                                return (
+                                                    <div className="py-20 flex flex-col items-center justify-center text-slate-400">
+                                                        <Activity size={48} className="mb-4 opacity-20" />
+                                                        <p className="text-sm font-bold uppercase tracking-widest">{t('employeeDashboard.noActivity')}</p>
+                                                    </div>
+                                                );
                                             }
-                                            groups[monthKey].items.push({ ...log, type: 'work' });
-                                            groups[monthKey].workHours += log.hours;
-                                            groups[monthKey].totalHours += log.hours;
-                                        });
 
-                                        // Process Vacations
-                                        employee.vacations.forEach((vac: any) => {
-                                            const date = new Date(vac.date);
-                                            const monthKey = `${date.getMonth()}-${date.getFullYear()}`;
-                                            if (!groups[monthKey]) {
-                                                groups[monthKey] = {
-                                                    monthIndex: date.getMonth(),
-                                                    monthName: date.toLocaleString(language === 'it' ? 'it-IT' : 'en-US', { month: 'long' }),
-                                                    year: date.getFullYear(),
-                                                    items: [],
-                                                    workHours: 0,
-                                                    vacationHours: 0,
-                                                    totalHours: 0
-                                                };
-                                            }
-                                            groups[monthKey].items.push({ ...vac, type: 'vacation' });
-                                            // 1 vacation day = 8 hours for the total
-                                            groups[monthKey].vacationHours += 8;
-                                            groups[monthKey].totalHours += 8;
-                                        });
-
-                                        const sortedGroups = Object.values(groups).sort((a, b) => {
-                                            if (a.year !== b.year) return b.year - a.year;
-                                            return b.monthIndex - a.monthIndex;
-                                        });
-
-                                        if (sortedGroups.length === 0) {
-                                            return (
-                                                <div className="py-20 flex flex-col items-center justify-center text-slate-400">
-                                                    <Activity size={48} className="mb-4 opacity-20" />
-                                                    <p className="text-sm font-bold uppercase tracking-widest">{t('employeeDashboard.noActivity')}</p>
-                                                </div>
-                                            );
-                                        }
-
-                                        return sortedGroups.map((group) => (
-                                            <details key={`${group.monthName}-${group.year}`} className="group border-b border-slate-100 last:border-0" open={false}>
-                                                <summary className="flex justify-between items-center px-6 py-4 font-black uppercase tracking-tight text-xs cursor-pointer list-none text-slate-700 hover:bg-slate-50 transition-colors">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all">
-                                                            <Calendar size={18} />
-                                                        </div>
-                                                        <span className="text-sm font-black">{group.monthName} {group.year}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="text-right mr-4 flex flex-col items-end">
-                                                            <div>
-                                                                <span className="text-lg font-black text-slate-900">{group.totalHours}</span>
-                                                                <span className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">{t('employeeDashboard.hrs')}</span>
+                                            return sortedGroups.map((group) => (
+                                                <details key={`${group.monthName}-${group.year}`} className="group border-b border-slate-100 last:border-0" open={false}>
+                                                    <summary className="flex justify-between items-center px-6 py-4 font-black uppercase tracking-tight text-xs cursor-pointer list-none text-slate-700 hover:bg-slate-50 transition-colors">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                                <Calendar size={18} />
                                                             </div>
-                                                            <div className="text-[9px] text-slate-400 font-bold flex gap-2">
-                                                                <span className="text-blue-500">{group.workHours}h {t('employeeDashboard.logWorKHoursInShort')}</span>
-                                                                <span className="text-orange-500">{group.vacationHours}h {t('employeeDashboard.vacation')}</span>
-                                                            </div>
+                                                            <span className="text-sm font-black">{group.monthName} {group.year}</span>
                                                         </div>
-                                                        <ChevronDown size={18} className="text-slate-400 transition-transform group-open:rotate-180" />
-                                                    </div>
-                                                </summary>
-                                                <div className="px-2 pb-4">
-                                                    <div className="space-y-1">
-                                                        {group.items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((item: any) => (
-                                                            item.type === 'work' ? (
-                                                                <div key={item.id} className="group/item flex items-center gap-6 p-4 hover:bg-slate-50/80 transition-all rounded-[1.2rem]">
-                                                                    <div className="w-10 h-10 flex-shrink-0 bg-white border border-slate-100 text-blue-600 rounded-xl flex items-center justify-center group-hover/item:scale-110 transition-transform shadow-sm">
-                                                                        <CheckCircle2 size={20} />
-                                                                    </div>
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <p className="font-bold text-slate-900 truncate uppercase tracking-tight text-xs mb-0.5">{item.project.name}</p>
-                                                                        <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                                                            <span className="flex items-center gap-1">
-                                                                                <Calendar size={10} />
-                                                                                {new Date(item.date).toLocaleDateString()}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-4">
-                                                                        <div className="text-right">
-                                                                            <span className="text-lg font-black text-slate-900">{item.hours}</span>
-                                                                            <span className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">{t('employeeDashboard.hrs')}</span>
-                                                                        </div>
-                                                                        <button
-                                                                            onClick={(e) => { e.preventDefault(); handleDeleteWorkLog(item.id); }}
-                                                                            disabled={isDeleting === item.id}
-                                                                            className="p-2 text-slate-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 disabled:opacity-50"
-                                                                            title={t('common.delete')}
-                                                                        >
-                                                                            {isDeleting === item.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                                                                        </button>
-                                                                    </div>
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="text-right mr-4 flex flex-col items-end">
+                                                                <div>
+                                                                    <span className="text-lg font-black text-slate-900">{group.totalHours}</span>
+                                                                    <span className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">{t('employeeDashboard.hrs')}</span>
                                                                 </div>
-                                                            ) : (
-                                                                <div key={item.id} className="group/item flex items-center gap-6 p-4 hover:bg-orange-50/30 transition-all bg-orange-50/20 rounded-[1.2rem]">
-                                                                    <div className="w-10 h-10 flex-shrink-0 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center group-hover/item:scale-110 transition-transform">
-                                                                        <Palmtree size={20} />
-                                                                    </div>
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <p className="font-bold text-orange-900 truncate uppercase tracking-tight text-xs mb-0.5">{t('employeeDashboard.vacation')}</p>
-                                                                        <div className="flex items-center gap-2 text-[10px] text-orange-400 font-bold uppercase tracking-wider">
-                                                                            <span className="flex items-center gap-1">
-                                                                                <Calendar size={10} />
-                                                                                {new Date(item.date).toLocaleDateString()}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-4">
-                                                                        <div className="text-right">
-                                                                            <span className="text-sm font-black text-orange-600">{t('employeeDashboard.dayDeducted')}</span>
-                                                                        </div>
-                                                                        <button
-                                                                            onClick={(e) => { e.preventDefault(); handleDeleteVacationLog(item.id); }}
-                                                                            disabled={isDeleting === item.id}
-                                                                            className="p-2 text-orange-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 disabled:opacity-50"
-                                                                            title={t('common.delete')}
-                                                                        >
-                                                                            {isDeleting === item.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                                                                        </button>
-                                                                    </div>
+                                                                <div className="text-[9px] text-slate-400 font-bold flex gap-2">
+                                                                    <span className="text-blue-500">{group.workHours}h {t('employeeDashboard.logWorKHoursInShort')}</span>
+                                                                    <span className="text-orange-500">{group.vacationHours}h {t('employeeDashboard.vacation')}</span>
                                                                 </div>
-                                                            )
-                                                        ))}
+                                                            </div>
+                                                            <ChevronDown size={18} className="text-slate-400 transition-transform group-open:rotate-180" />
+                                                        </div>
+                                                    </summary>
+                                                    <div className="px-2 pb-4">
+                                                        <div className="space-y-1">
+                                                            {group.items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((item: any) => (
+                                                                item.type === 'work' ? (
+                                                                    <div key={item.id} className="group/item flex items-center gap-6 p-4 hover:bg-slate-50/80 transition-all rounded-[1.2rem]">
+                                                                        <div className="w-10 h-10 flex-shrink-0 bg-white border border-slate-100 text-blue-600 rounded-xl flex items-center justify-center group-hover/item:scale-110 transition-transform shadow-sm">
+                                                                            <CheckCircle2 size={20} />
+                                                                        </div>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="font-bold text-slate-900 truncate uppercase tracking-tight text-xs mb-0.5">{item.project.name}</p>
+                                                                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                                                                <span className="flex items-center gap-1">
+                                                                                    <Calendar size={10} />
+                                                                                    {new Date(item.date).toLocaleDateString()}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-4">
+                                                                            <div className="text-right">
+                                                                                <span className="text-lg font-black text-slate-900">{item.hours}</span>
+                                                                                <span className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">{t('employeeDashboard.hrs')}</span>
+                                                                            </div>
+                                                                            <button
+                                                                                onClick={(e) => { e.preventDefault(); handleDeleteWorkLog(item.id); }}
+                                                                                disabled={isDeleting === item.id}
+                                                                                className="p-2 text-slate-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 disabled:opacity-50"
+                                                                                title={t('common.delete')}
+                                                                            >
+                                                                                {isDeleting === item.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div key={item.id} className="group/item flex items-center gap-6 p-4 hover:bg-orange-50/30 transition-all bg-orange-50/20 rounded-[1.2rem]">
+                                                                        <div className="w-10 h-10 flex-shrink-0 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center group-hover/item:scale-110 transition-transform">
+                                                                            <Palmtree size={20} />
+                                                                        </div>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="font-bold text-orange-900 truncate uppercase tracking-tight text-xs mb-0.5">{t('employeeDashboard.vacation')}</p>
+                                                                            <div className="flex items-center gap-2 text-[10px] text-orange-400 font-bold uppercase tracking-wider">
+                                                                                <span className="flex items-center gap-1">
+                                                                                    <Calendar size={10} />
+                                                                                    {new Date(item.date).toLocaleDateString()}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-4">
+                                                                            <div className="text-right">
+                                                                                <span className="text-sm font-black text-orange-600">{t('employeeDashboard.dayDeducted')}</span>
+                                                                            </div>
+                                                                            <button
+                                                                                onClick={(e) => { e.preventDefault(); handleDeleteVacationLog(item.id); }}
+                                                                                disabled={isDeleting === item.id}
+                                                                                className="p-2 text-orange-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 disabled:opacity-50"
+                                                                                title={t('common.delete')}
+                                                                            >
+                                                                                {isDeleting === item.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                )
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </details>
-                                        ));
-                                    })()}
+                                                </details>
+                                            ));
+                                        })()}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </section>
                     </div>
                 </div>
             </div>

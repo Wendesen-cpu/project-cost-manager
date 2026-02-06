@@ -4,8 +4,9 @@ import { logVacation } from '@/app/actions/worklogs';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useI18n } from '@/components/I18nContext';
+import { format } from 'date-fns';
 
-export function LogVacationForm({ employeeId, onSuccess }: { employeeId: string; onSuccess?: () => void }) {
+export function LogVacationForm({ employeeId, onSuccess, initialDate }: { employeeId: string; onSuccess?: () => void; initialDate?: Date }) {
     const router = useRouter();
     const { t } = useI18n();
     const [loading, setLoading] = useState(false);
@@ -28,7 +29,7 @@ export function LogVacationForm({ employeeId, onSuccess }: { employeeId: string;
         <form action={onSubmit} className="space-y-4">
             <div>
                 <label className="block text-sm font-medium text-gray-700">{t('common.date')}</label>
-                <input name="date" type="date" required className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+                <input name="date" type="date" required defaultValue={initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
             </div>
             <button
                 type="submit"

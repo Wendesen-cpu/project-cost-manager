@@ -4,8 +4,9 @@ import { logWork } from '@/app/actions/worklogs';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useI18n } from '@/components/I18nContext';
+import { format } from 'date-fns';
 
-export function LogTimeForm({ employeeId, projects, onSuccess }: { employeeId: string; projects: any[]; onSuccess?: () => void }) {
+export function LogTimeForm({ employeeId, projects, onSuccess, initialDate }: { employeeId: string; projects: any[]; onSuccess?: () => void; initialDate?: Date }) {
     const router = useRouter();
     const { t } = useI18n();
     const [loading, setLoading] = useState(false);
@@ -30,7 +31,7 @@ export function LogTimeForm({ employeeId, projects, onSuccess }: { employeeId: s
         <form action={onSubmit} className="space-y-4">
             <div>
                 <label className="block text-sm font-medium text-gray-700">{t('common.date')}</label>
-                <input name="date" type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+                <input name="date" type="date" required defaultValue={initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700">{t('common.project')}</label>
@@ -43,7 +44,15 @@ export function LogTimeForm({ employeeId, projects, onSuccess }: { employeeId: s
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700">{t('common.hours')}</label>
-                <input name="hours" type="number" step="0.5" required className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+                <input
+                    name="hours"
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    required
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                    title="Hours must be a multiple of 0.5 (e.g., 0.5, 1, 1.5, ...)"
+                />
             </div>
             <button
                 type="submit"

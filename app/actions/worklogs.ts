@@ -9,6 +9,9 @@ export async function logWork(data: {
     date: Date;
     hours: number;
 }) {
+    if (data.hours <= 0 || data.hours % 0.5 !== 0) {
+        throw new Error('Hours must be a positive multiple of 0.5');
+    }
     const log = await prisma.workLog.create({
         data,
     });
@@ -51,6 +54,9 @@ export async function deleteWorkLog(id: string, employeeId: string) {
 }
 
 export async function updateWorkLog(id: string, employeeId: string, data: { hours?: number, date?: Date }) {
+    if (data.hours !== undefined && (data.hours <= 0 || data.hours % 0.5 !== 0)) {
+        throw new Error('Hours must be a positive multiple of 0.5');
+    }
     const updated = await prisma.workLog.update({
         where: { id },
         data

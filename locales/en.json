@@ -126,7 +126,9 @@
         "noActivity": "No recent activity.",
         "vacation": "Vacation",
         "dayDeducted": "-1 Day",
-        "hrs": "hrs"
+        "hrs": "hrs",
+        "monthlyCalendar": "Monthly Calendar",
+        "logWorkHoursShort": "Work Hours"
     },
     "employeeLogin": {
         "title": "Employee Personal Portal",
@@ -173,6 +175,17 @@
         "selectProject": "Select Project...",
         "logHours": "Log Hours",
         "logVacation": "Log Vacation Day",
-        "vacationNote": "Note: This will deduct 1 day from your balance."
+        "vacationNote": "Note: This will deduct 1 day from your balance.",
+        "today": "Today",
+        "back": "Back",
+        "days": {
+            "mon": "Mon",
+            "tue": "Tue",
+            "wed": "Wed",
+            "thu": "Thu",
+            "fri": "Fri",
+            "sat": "Sat",
+            "sun": "Sun"
+        }
     }
 }
