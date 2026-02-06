@@ -12,9 +12,10 @@
   "dependencies": {
     "@ai-sdk/google": "^3.0.21",
     "@ai-sdk/groq": "^3.0.21",
-    "@ai-sdk/react": "^3.0.72",
+    "@ai-sdk/openai": "^3.0.25",
+    "@ai-sdk/react": "^3.0.75",
     "@prisma/client": "^6.19.2",
-    "ai": "^6.0.70",
+    "ai": "^6.0.73",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
