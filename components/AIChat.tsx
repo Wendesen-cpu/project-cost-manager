@@ -102,9 +102,11 @@ export function AIChat({ onRefresh }: { onRefresh?: () => void }) {
     // Check if performing tool
     const isPerformingTask = isLoading && (
         hasCalledToolInCurrentRequest.current ||
-        (messages.length > 0 && (messages[messages.length - 1] as any).parts.some((p: any) =>
-            p.type === 'tool-invocation' && p.toolInvocation.state !== 'result'
-        ))
+        (messages.length > 0 && 
+            (messages[messages.length - 1] as any).parts?.some((p: any) =>
+                p.type === 'tool-invocation' && p.toolInvocation.state !== 'result'
+            )
+        )
     );
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,7 +200,13 @@ export function AIChat({ onRefresh }: { onRefresh?: () => void }) {
                                         ? "bg-slate-900 text-white rounded-tr-none"
                                         : "bg-white border border-slate-100 text-slate-700 rounded-tl-none"
                                 )}>
-                                    {m.parts.map((part: any, i: number) => {
+                                    {/* Render content directly if it's a string */}
+                                    {typeof m.content === 'string' && m.content && (
+                                        <p>{m.content}</p>
+                                    )}
+                                    
+                                    {/* Render parts if available */}
+                                    {m.parts && m.parts.map((part: any, i: number) => {
                                         if (part.type === 'text') {
                                             return <p key={i}>{part.text}</p>;
                                         }
