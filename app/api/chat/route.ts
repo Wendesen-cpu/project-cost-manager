@@ -1,6 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
-import { z } from "zod";
 import { getEmployeeSession } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
 
@@ -29,9 +28,16 @@ export async function POST(req: Request) {
     .map((msg: any) => {
       let content = "";
 
-      if (typeof msg.content === "string") {
+      if (msg.parts && Array.isArray(msg.parts)) {
+        content = msg.parts
+          .filter((part: any) => part.type === "text")
+          .map((part: any) => part.text)
+          .join(" ");
+      }
+      else if (typeof msg.content === "string") {
         content = msg.content;
-      } else if (Array.isArray(msg.content)) {
+      }
+      else if (Array.isArray(msg.content)) {
         content = msg.content
           .filter((part: any) => part.type === "text")
           .map((part: any) => part.text)
