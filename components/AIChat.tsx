@@ -16,11 +16,21 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
+interface Project {
+    id: string;
+    name: string;
+}
+
 export function AIChat({ onRefresh }: { onRefresh?: () => void }) {
     const { t } = useI18n();
     const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [localInput, setLocalInput] = useState('');
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [showAutocomplete, setShowAutocomplete] = useState(false);
+    const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [autocompletePosition, setAutocompletePosition] = useState({ start: 0, end: 0 });
 
     const {
         messages,
@@ -44,8 +54,83 @@ export function AIChat({ onRefresh }: { onRefresh?: () => void }) {
         messages.some((m: any) => (m.toolInvocations || []).some((ti: any) => ti.state === 'call'))
     );
 
+    // Fetch employee projects on mount
+    useEffect(() => {
+        const fetchProjects = async () => {
+            try {
+                const response = await fetch('/api/projects');
+                if (response.ok) {
+                    const data = await response.json();
+                    setProjects(data.projects || []);
+                }
+            } catch (error) {
+                console.error('Error fetching projects:', error);
+            }
+        };
+        fetchProjects();
+    }, []);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setLocalInput(e.target.value);
+        const value = e.target.value;
+        setLocalInput(value);
+
+        // Detect autocomplete triggers: "for " or "project "
+        const triggers = ['for ', 'project '];
+        let triggerFound = false;
+        let triggerPos = { start: 0, end: 0 };
+
+        for (const trigger of triggers) {
+            const lastIndex = value.toLowerCase().lastIndexOf(trigger);
+            if (lastIndex !== -1) {
+                const afterTrigger = value.slice(lastIndex + trigger.length);
+                // Only show autocomplete if there's text after the trigger or it just ends with the trigger
+                if (afterTrigger.length >= 0) {
+                    triggerFound = true;
+                    triggerPos = {
+                        start: lastIndex + trigger.length,
+                        end: value.length
+                    };
+
+                    // Filter projects based on text after trigger
+                    const searchTerm = afterTrigger.toLowerCase();
+                    const filtered = projects.filter(p =>
+                        p.name.toLowerCase().includes(searchTerm)
+                    );
+
+                    setFilteredProjects(filtered);
+                    setAutocompletePosition(triggerPos);
+                    setSelectedIndex(0);
+                    break;
+                }
+            }
+        }
+
+        setShowAutocomplete(triggerFound && filteredProjects.length > 0);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!showAutocomplete) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setSelectedIndex(prev => (prev + 1) % filteredProjects.length);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setSelectedIndex(prev => (prev - 1 + filteredProjects.length) % filteredProjects.length);
+        } else if (e.key === 'Enter' && filteredProjects.length > 0) {
+            e.preventDefault();
+            selectProject(filteredProjects[selectedIndex]);
+        } else if (e.key === 'Escape') {
+            setShowAutocomplete(false);
+        }
+    };
+
+    const selectProject = (project: Project) => {
+        // Replace the text after the trigger with the project name
+        const beforeTrigger = localInput.slice(0, autocompletePosition.start);
+        const newInput = beforeTrigger + project.name;
+        setLocalInput(newInput);
+        setShowAutocomplete(false);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -188,6 +273,37 @@ export function AIChat({ onRefresh }: { onRefresh?: () => void }) {
                                             )}
                                         </div>
                                     ))}
+
+                                    {/* Project Selection UI - Clickable Buttons */}
+                                    {m.toolInvocations?.filter((ti: any) =>
+                                        ti.toolName === 'requestProjectSelection' &&
+                                        ti.state === 'result' &&
+                                        ti.result?.requiresProjectSelection
+                                    ).map((selectionTool: any, idx: number) => {
+                                        const { projects, pendingAction } = selectionTool.result;
+                                        return (
+                                            <div key={`proj-sel-${idx}`} className="mt-4 space-y-2">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">Select a project:</p>
+                                                <div className="flex flex-col gap-2">
+                                                    {projects.map((project: any) => (
+                                                        <button
+                                                            key={project.id}
+                                                            onClick={() => {
+                                                                const actionText = pendingAction.type === 'logWork'
+                                                                    ? `Log ${pendingAction.hours}h on ${pendingAction.date} for ${project.name}`
+                                                                    : `Log ${pendingAction.hoursPerDay}h from ${pendingAction.startDate} to ${pendingAction.endDate} for ${project.name}`;
+                                                                sendMessage({ text: actionText });
+                                                            }}
+                                                            disabled={isLoading}
+                                                            className="w-full px-4 py-3 bg-white border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 rounded-xl text-left transition-all active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm text-slate-700 hover:text-blue-600"
+                                                        >
+                                                            {project.name}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         ))}
@@ -219,9 +335,31 @@ export function AIChat({ onRefresh }: { onRefresh?: () => void }) {
                     {/* Input Area */}
                     <form onSubmit={handleSubmit} className="p-6 bg-slate-50 border-t border-slate-100">
                         <div className="relative">
+                            {/* Autocomplete Dropdown */}
+                            {showAutocomplete && filteredProjects.length > 0 && (
+                                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto z-10">
+                                    {filteredProjects.map((project, index) => (
+                                        <button
+                                            key={project.id}
+                                            type="button"
+                                            onClick={() => selectProject(project)}
+                                            className={clsx(
+                                                "w-full px-4 py-3 text-left transition-all font-bold text-sm",
+                                                index === selectedIndex
+                                                    ? "bg-blue-600 text-white"
+                                                    : "bg-white text-slate-700 hover:bg-blue-50"
+                                            )}
+                                        >
+                                            {project.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
                             <input
                                 value={localInput}
                                 onChange={handleInputChange}
+                                onKeyDown={handleKeyDown}
                                 placeholder={t('aiChat.placeholder')}
                                 className="w-full pl-4 pr-12 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-bold text-xs uppercase tracking-widest text-slate-700 placeholder:text-slate-300 shadow-sm"
                             />
