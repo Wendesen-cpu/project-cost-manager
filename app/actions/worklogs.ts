@@ -95,17 +95,43 @@ export async function getEmployeeDashboardData(employeeId: string) {
                 }
             },
             workLogs: {
-                take: 10,
+                take: 100,
                 orderBy: { date: 'desc' },
                 include: {
                     project: true
                 }
             },
             vacations: {
-                take: 10,
+                take: 100,
                 orderBy: { date: 'desc' }
             }
         }
     });
     return employee;
+}
+
+export async function clearAllLogs(employeeId: string) {
+    const vacationsCount = await prisma.vacationLog.count({
+        where: { employeeId }
+    });
+
+    await prisma.$transaction([
+        prisma.workLog.deleteMany({
+            where: { employeeId }
+        }),
+        prisma.vacationLog.deleteMany({
+            where: { employeeId }
+        }),
+        prisma.employee.update({
+            where: { id: employeeId },
+            data: {
+                vacationDays: {
+                    increment: vacationsCount
+                }
+            }
+        })
+    ]);
+
+    revalidatePath(`/employee/${employeeId}`, 'page');
+    revalidatePath(`/employee/${employeeId}`, 'layout');
 }
