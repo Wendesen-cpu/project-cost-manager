@@ -107,10 +107,10 @@ export function AIChat({ onRefresh }: { onRefresh?: () => void }) {
                         </div>
                         <div>
                             <h3 className="text-lg font-black tracking-tight">
-                                AI Assistant
+                                Il tuo Assistente Personale
                             </h3>
                             <p className="text-white/80 text-xs font-medium">
-                                Gestisci i tuoi log
+                                Sempre pronto ad aiutarti ✨
                             </p>
                         </div>
                     </div>
@@ -122,8 +122,14 @@ export function AIChat({ onRefresh }: { onRefresh?: () => void }) {
                     >
                         {messages.length === 0 && (
                             <div className="text-center py-12">
-                                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest leading-relaxed max-w-50">
-                                    Chiedi di vedere i tuoi log o registrare ore
+                                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
+                                    <Bot size={32} className="text-white" />
+                                </div>
+                                <p className="text-slate-700 font-semibold mb-2">
+                                    Ciao! 👋 Hello!
+                                </p>
+                                <p className="text-slate-500 text-xs leading-relaxed max-w-50 mx-auto">
+                                    Chiedimi in italiano o inglese di vedere i tuoi log, registrare ore o modificare attività
                                 </p>
                             </div>
                         )}
@@ -141,7 +147,7 @@ export function AIChat({ onRefresh }: { onRefresh?: () => void }) {
                                         </div>
                                     )}
                                     <div className={clsx(
-                                        "max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                                        "max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-line",
                                         isUser
                                             ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
                                             : "bg-white/60 text-slate-800 border border-white shadow-sm"
@@ -186,7 +192,7 @@ export function AIChat({ onRefresh }: { onRefresh?: () => void }) {
                                 type="text"
                                 value={input}
                                 onChange={handleInputChange}
-                                placeholder="Scrivi un messaggio..."
+                                placeholder="Es: mostrami i log / show my logs..."
                                 className="flex-1 px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400"
                                 disabled={isLoading}
                             />
