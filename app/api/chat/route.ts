@@ -1,16 +1,18 @@
-import { createOllama } from 'ai-sdk-ollama';
+import { groq } from '@ai-sdk/groq';
 import { streamText, stepCountIs } from 'ai';
 import { z } from 'zod';
-import { logWork, logVacation, deleteWorkLog, updateWorkLog, clearAllLogs } from '@/app/actions/worklogs';
+import { logWork, logVacation, deleteWorkLog, updateWorkLog, updateBulkWorkLogs, addBulkWorkLogs, clearAllLogs, deleteDuplicateWorkLogs } from '@/app/actions/worklogs';
 import { getEmployeeSession } from '@/app/lib/auth';
 import { prisma } from '@/app/lib/prisma';
+import { createOllama } from 'ai-sdk-ollama';
+
 
 const ollama = createOllama({
     baseURL: 'http://localhost:11434',
 });
 
-// Allow streaming responses up to 60 seconds for local LLM
-export const maxDuration = 60;
+// Allow streaming responses up to 30 seconds
+export const maxDuration = 30;
 
 export async function POST(req: Request) {
     const { messages } = await req.json();
@@ -67,7 +69,8 @@ export async function POST(req: Request) {
 
     try {
         const result = streamText({
-            model: ollama('deepseek-v3.1:671b-cloud'),
+            // model: groq('llama-3.3-70b-versatile'),
+            model: ollama('qwen3-coder:480b-cloud'),
             messages: modelMessages,
             stopWhen: stepCountIs(15),
             system: `You are the Project Pro Assistant.
@@ -80,27 +83,25 @@ export async function POST(req: Request) {
 ### ⚠️ CRITICAL RULE #1 - PROJECT SELECTION ⚠️:
 **WHEN USER WANTS TO LOG WORK BUT DOES NOT SPECIFY A PROJECT:**
 
-YOU MUST CALL THE requestProjectSelection TOOL. DO NOT RESPOND WITH TEXT.
+YOU MUST CALL THE requestProjectSelection TOOL. DO NOT RESPOND WITH TEXT OR JSON.
 
 ❌ NEVER DO THIS:
 - "Which project would you like to use?"
-- "Let me show you the available projects"
-- "Please select a project from: ..."
-- ANY text response asking about projects
+- ANY text response asking about projects.
+- Outputting JSON like {"action": "..."} or {"status": "..."}.
 
 ✅ ALWAYS DO THIS INSTEAD:
-- IMMEDIATELY call requestProjectSelection tool
-- Pass the work log details (hours, date, etc.)
-- The tool will show clickable buttons to the user
-- DO NOT say anything, just call the tool
+- IMMEDIATELY call requestProjectSelection tool.
+- DO NOT say anything, just call the tool.
 
-EXAMPLE:
-User: "log 8 hours tomorrow"
-You: [Call requestProjectSelection with actionType='logWork', hours=8, date='2026-02-16']
-(NO TEXT RESPONSE AT ALL)
+### ⚠️ CRITICAL RULE #2 - NO RAW JSON ⚠️:
+- NEVER output raw JSON in your response. 
+- If you need to perform an action, use a tool.
+- If you need to speak to the user, use plain text.
+- Any output starting with '{' and ending with '}' that is not a tool call is a failure.
 
 ### OTHER RULES:
-2. DATE FORMAT: Always use YYYY-MM-DD (ISO) for tools. "today" is ${new Date().toISOString().split('T')[0]}.
+1. DATE FORMAT: Always use YYYY-MM-DD (ISO) for tools. "today" is ${new Date().toISOString().split('T')[0]} (${new Date().toLocaleDateString('en-US', { weekday: 'long' })}).
 
 3. RANGES: For ranges (e.g. Feb 5-10), use addBulkWorkLogs tool.
 
@@ -110,6 +111,13 @@ You: [Call requestProjectSelection with actionType='logWork', hours=8, date='202
    - DO NOT ask the user again
    - IMMEDIATELY call the SAME tool with ALL the same parameters
    - ADD confirmed: true to the parameters
+
+### DUPLICATE PREVENTION:
+1. When logging work or vacation:
+   - If the tool returns 'conflict: true', DO NOT assume the user wants to overwrite.
+   - TELL the user there is an existing log and ask: "Should I remind you that there is already a log for X hours? Would you like to merge them (total Y hours), ignore this request, or add it as a new separate entry?"
+   - For vacations, ask: "There is already a vacation logged. Should I ignore this request or add it anyway?"
+   - When the user confirms, call the tool again with the appropriate 'conflictAction' ('merge', 'ignore', or 'add').
 
 ### PROJECTS LIST:
 ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
@@ -144,15 +152,19 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                         date: z.string().optional().describe('Date for single day log (YYYY-MM-DD)'),
                         startDate: z.string().optional().describe('Start date for bulk log'),
                         endDate: z.string().optional().describe('End date for bulk log'),
-                        hoursPerDay: z.number().optional().describe('Hours per day for bulk log')
+                        hoursPerDay: z.number().optional().describe('Hours per day for bulk log'),
+                        skipWeekends: z.boolean().optional().describe('If true, weekends are skipped for bulk logs'),
+                        month: z.string().optional().describe('Month in YYYY-MM format (e.g., 2026-02)')
                     }),
-                    execute: async ({ actionType, hours, date, startDate, endDate, hoursPerDay }: {
+                    execute: async ({ actionType, hours, date, startDate, endDate, hoursPerDay, skipWeekends, month }: {
                         actionType: 'logWork' | 'addBulkWorkLogs',
                         hours?: number,
                         date?: string,
                         startDate?: string,
                         endDate?: string,
-                        hoursPerDay?: number
+                        hoursPerDay?: number,
+                        skipWeekends?: boolean,
+                        month?: string
                     }) => {
                         return {
                             success: true,
@@ -164,7 +176,9 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                                 date,
                                 startDate,
                                 endDate,
-                                hoursPerDay
+                                hoursPerDay,
+                                skipWeekends,
+                                month
                             },
                             message: 'Please select a project from the list above.'
                         };
@@ -180,9 +194,11 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                         startDate: z.string().optional(),
                         endDate: z.string().optional(),
                         hoursPerDay: z.number().optional(),
-                        confirmed: z.boolean().optional()
+                        confirmed: z.boolean().optional(),
+                        skipWeekends: z.boolean().optional(),
+                        month: z.string().optional()
                     }),
-                    execute: async ({ projectId, actionType, hours, date, startDate, endDate, hoursPerDay, confirmed }: {
+                    execute: async ({ projectId, actionType, hours, date, startDate, endDate, hoursPerDay, confirmed, skipWeekends, month }: {
                         projectId: string,
                         actionType: 'logWork' | 'addBulkWorkLogs',
                         hours?: number,
@@ -190,7 +206,9 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                         startDate?: string,
                         endDate?: string,
                         hoursPerDay?: number,
-                        confirmed?: boolean
+                        confirmed?: boolean,
+                        skipWeekends?: boolean,
+                        month?: string
                     }) => {
                         try {
                             if (actionType === 'logWork' && date && hours !== undefined) {
@@ -219,24 +237,40 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                                 });
                                 const projectName = availableProjects.find((p: any) => p.id === targetId)?.name || 'the project';
                                 return { success: true, message: `Logged ${hours}h for ${projectName} on ${date}.` };
-                            } else if (actionType === 'addBulkWorkLogs' && startDate && endDate && hoursPerDay !== undefined) {
-                                const start = new Date(startDate);
-                                const end = new Date(endDate);
-                                const weekendDates = [];
+                            } else if (actionType === 'addBulkWorkLogs' && hoursPerDay !== undefined && (month || (startDate && endDate))) {
+                                let start: Date;
+                                let end: Date;
+                                let dateRangeStr = '';
 
-                                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                                    const dayOfWeek = d.getUTCDay();
-                                    if (dayOfWeek === 0 || dayOfWeek === 6) {
-                                        weekendDates.push(d.toISOString().split('T')[0]);
-                                    }
+                                if (month) {
+                                    const [year, monthNum] = month.split('-').map(Number);
+                                    start = new Date(Date.UTC(year, monthNum - 1, 1));
+                                    end = new Date(Date.UTC(year, monthNum, 0));
+                                    dateRangeStr = `${month} (${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]})`;
+                                } else if (startDate && endDate) {
+                                    start = new Date(startDate);
+                                    end = new Date(endDate);
+                                    dateRangeStr = `${startDate} to ${endDate}`;
+                                } else {
+                                    return { success: false, message: 'Invalid arguments. Provide month or start/end dates.' };
                                 }
 
-                                if (weekendDates.length > 0 && !confirmed) {
-                                    return {
-                                        success: false,
-                                        message: `The range includes weekend days: ${weekendDates.join(', ')}. Ask user for confirmation.`,
-                                        requiresConfirmation: true
-                                    };
+                                if (!skipWeekends) {
+                                    const weekendDates = [];
+                                    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                                        const dayOfWeek = d.getUTCDay();
+                                        if (dayOfWeek === 0 || dayOfWeek === 6) {
+                                            weekendDates.push(d.toISOString().split('T')[0]);
+                                        }
+                                    }
+
+                                    if (weekendDates.length > 0 && !confirmed) {
+                                        return {
+                                            success: false,
+                                            message: `The range includes weekend days: ${weekendDates.join(', ')}. Ask user for confirmation.`,
+                                            requiresConfirmation: true
+                                        };
+                                    }
                                 }
 
                                 let targetId = projectId;
@@ -245,22 +279,19 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                                     targetId = availableProjectMap[lowerInput];
                                 }
 
-                                const results = [];
-                                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                                    const dateStr = d.toISOString().split('T')[0];
-                                    await logWork({
-                                        employeeId,
-                                        projectId: targetId,
-                                        date: new Date(dateStr),
-                                        hours: hoursPerDay
-                                    });
-                                    results.push(dateStr);
-                                }
+                                const result = await addBulkWorkLogs({
+                                    employeeId,
+                                    projectId: targetId,
+                                    startDate: start,
+                                    endDate: end,
+                                    hours: hoursPerDay,
+                                    skipWeekends: !!skipWeekends
+                                });
 
                                 const projectName = availableProjects.find((p: any) => p.id === targetId)?.name || 'the project';
                                 return {
                                     success: true,
-                                    message: `Logged ${hoursPerDay}h for ${projectName} on ${results.length} days (${startDate} to ${endDate}).`
+                                    message: `Logged ${hoursPerDay}h for ${projectName} on ${result.count} days (${dateRangeStr}).`
                                 };
                             }
                             return { success: false, message: 'Invalid action parameters.' };
@@ -270,14 +301,15 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                     }
                 },
                 logWork: {
-                    description: 'Log work hours for a specific project. IMPORTANT: Only call this if the user explicitly mentioned a project name in their message. If they did not mention a project, ask them which project first.',
+                    description: 'Log work hours for a specific project. IMPORTANT: Only call this if the user explicitly mentioned a project name. If they did not, use requestProjectSelection instead.',
                     inputSchema: z.object({
-                        projectId: z.string().describe('The ID or Name of the project that the user explicitly mentioned'),
+                        projectId: z.string().describe('The ID or Name of the project'),
                         date: z.string().describe('The date in YYYY-MM-DD format'),
-                        hours: z.coerce.number().describe('Hours worked as a number'),
-                        confirmed: z.boolean().optional().describe('True if user confirmed weekend logging')
+                        hours: z.coerce.number().describe('Hours worked'),
+                        confirmed: z.boolean().optional().describe('True if user confirmed weekend logging'),
+                        conflictAction: z.enum(['merge', 'ignore', 'add']).optional().describe('Action to take if a log already exists for this date and project')
                     }),
-                    execute: async ({ projectId, date, hours, confirmed }: { projectId: string, date: string, hours: number, confirmed?: boolean }) => {
+                    execute: async ({ projectId, date, hours, confirmed, conflictAction }: { projectId: string, date: string, hours: number, confirmed?: boolean, conflictAction?: 'merge' | 'ignore' | 'add' }) => {
                         try {
                             const d = new Date(date);
                             const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
@@ -296,14 +328,29 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                                 targetId = availableProjectMap[lowerInput];
                             }
 
-                            const log = await logWork({
+                            const result = await logWork({
                                 employeeId,
                                 projectId: targetId,
                                 date: d,
-                                hours
+                                hours,
+                                conflictAction
                             });
+
+                            if ((result as any).conflict) {
+                                return {
+                                    success: false,
+                                    conflict: true,
+                                    message: (result as any).message,
+                                    existingHours: (result as any).existingHours
+                                };
+                            }
+
                             const projectName = availableProjects.find((p: any) => p.id === targetId)?.name || 'the project';
-                            return { success: true, message: `Logged ${hours}h for ${projectName} on ${date}.` };
+                            let msg = `Logged ${hours}h for ${projectName} on ${date}.`;
+                            if ((result as any).action === 'merged') msg = `Merged ${hours}h into existing log for ${projectName} on ${date}.`;
+                            if ((result as any).action === 'ignored') msg = `Ignored request as log already exists for ${projectName} on ${date}.`;
+
+                            return { success: true, message: msg };
                         } catch (err: any) {
                             return { success: false, message: `Error: ${err.message}` };
                         }
@@ -313,38 +360,58 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                     description: 'Log work hours for multiple consecutive days. Use this when the user wants to log the same hours across a date range.',
                     inputSchema: z.object({
                         projectId: z.string().describe('The ID or Name of the project'),
-                        startDate: z.string().describe('Start date in YYYY-MM-DD format'),
-                        endDate: z.string().describe('End date in YYYY-MM-DD format'),
+                        startDate: z.string().optional().describe('Start date in YYYY-MM-DD format'),
+                        endDate: z.string().optional().describe('End date in YYYY-MM-DD format'),
+                        month: z.string().optional().describe('Month in YYYY-MM format (e.g., 2026-02)'),
                         hoursPerDay: z.coerce.number().describe('Hours to log per day'),
+                        skipWeekends: z.boolean().optional().describe('If true, Saturday and Sunday will be skipped automatically'),
                         confirmed: z.boolean().optional().describe('True if user confirmed weekend logging')
                     }),
-                    execute: async ({ projectId, startDate, endDate, hoursPerDay, confirmed }: {
+                    execute: async ({ projectId, startDate, endDate, month, hoursPerDay, skipWeekends, confirmed }: {
                         projectId: string,
-                        startDate: string,
-                        endDate: string,
+                        startDate?: string,
+                        endDate?: string,
+                        month?: string,
                         hoursPerDay: number,
+                        skipWeekends?: boolean,
                         confirmed?: boolean
                     }) => {
                         try {
-                            const start = new Date(startDate);
-                            const end = new Date(endDate);
-                            const results = [];
-                            const weekendDates = [];
+                            let start: Date;
+                            let end: Date;
+                            let dateRangeStr = '';
 
-                            // Check for weekends first
-                            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                                const dayOfWeek = d.getUTCDay();
-                                if (dayOfWeek === 0 || dayOfWeek === 6) {
-                                    weekendDates.push(d.toISOString().split('T')[0]);
-                                }
+                            if (month) {
+                                const [year, monthNum] = month.split('-').map(Number);
+                                start = new Date(Date.UTC(year, monthNum - 1, 1));
+                                end = new Date(Date.UTC(year, monthNum, 0));
+                                dateRangeStr = `${month} (${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]})`;
+                            } else if (startDate && endDate) {
+                                start = new Date(startDate);
+                                end = new Date(endDate);
+                                dateRangeStr = `${startDate} to ${endDate}`;
+                            } else {
+                                return { success: false, message: 'Please provide either a month OR a start/end date range.' };
                             }
 
-                            if (weekendDates.length > 0 && !confirmed) {
-                                return {
-                                    success: false,
-                                    message: `The range includes weekend days: ${weekendDates.join(', ')}. Ask user for confirmation.`,
-                                    requiresConfirmation: true
-                                };
+                            const weekendDates = [];
+
+                            if (!skipWeekends) {
+                                // Check for weekends first if not skipping
+                                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                                    const dayOfWeek = d.getUTCDay();
+                                    if (dayOfWeek === 0 || dayOfWeek === 6) {
+                                        weekendDates.push(d.toISOString().split('T')[0]);
+                                    }
+                                }
+
+                                if (weekendDates.length > 0 && !confirmed) {
+                                    return {
+                                        success: false,
+                                        message: `The range includes weekend days: ${weekendDates.join(', ')}. Ask user for confirmation.`,
+                                        requiresConfirmation: true
+                                    };
+                                }
                             }
 
                             // Resolve project ID
@@ -354,22 +421,19 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                                 targetId = availableProjectMap[lowerInput];
                             }
 
-                            // Log for each day
-                            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                                const dateStr = d.toISOString().split('T')[0];
-                                await logWork({
-                                    employeeId,
-                                    projectId: targetId,
-                                    date: new Date(dateStr),
-                                    hours: hoursPerDay
-                                });
-                                results.push(dateStr);
-                            }
+                            const result = await addBulkWorkLogs({
+                                employeeId,
+                                projectId: targetId,
+                                startDate: start,
+                                endDate: end,
+                                hours: hoursPerDay,
+                                skipWeekends: !!skipWeekends
+                            });
 
                             const projectName = availableProjects.find((p: any) => p.id === targetId)?.name || 'the project';
                             return {
                                 success: true,
-                                message: `Logged ${hoursPerDay}h for ${projectName} on ${results.length} days (${startDate} to ${endDate}).`
+                                message: `Logged ${hoursPerDay}h for ${projectName} on ${result.count} days (${dateRangeStr}).`
                             };
                         } catch (err: any) {
                             return { success: false, message: `Error: ${err.message}` };
@@ -377,18 +441,93 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                     }
                 },
                 updateWorkLog: {
-                    description: 'Update an existing work log',
+                    description: 'Update an existing work log. If logId is not known, provide date and projectId.',
                     inputSchema: z.object({
-                        logId: z.string().describe('The ID of the work log to update'),
+                        logId: z.string().optional().describe('The ID of the work log to update'),
                         hours: z.coerce.number().optional().describe('The new number of hours'),
-                        date: z.string().optional().describe('The new date in YYYY-MM-DD format')
+                        date: z.string().optional().describe('The date in YYYY-MM-DD format (if logId is missing)'),
+                        projectId: z.string().optional().describe('The ID or Name of the project (if logId is missing)')
                     }),
-                    execute: async ({ logId, hours, date }: { logId: string, hours?: number, date?: string }) => {
-                        await updateWorkLog(logId, employeeId, {
-                            hours,
-                            date: date ? new Date(date) : undefined
-                        });
-                        return { success: true, message: `Updated work log ${logId}` };
+                    execute: async ({ logId, hours, date, projectId }: { logId?: string, hours?: number, date?: string, projectId?: string }) => {
+                        try {
+                            let targetLogId = logId;
+
+                            if (!targetLogId && date && projectId) {
+                                let targetProjectId = projectId;
+                                const lowerInput = projectId.toLowerCase();
+                                if (availableProjectMap[lowerInput]) {
+                                    targetProjectId = availableProjectMap[lowerInput];
+                                }
+
+                                const workLog = await prisma.workLog.findFirst({
+                                    where: {
+                                        employeeId,
+                                        projectId: targetProjectId,
+                                        date: new Date(date)
+                                    }
+                                });
+
+                                if (!workLog) {
+                                    return { success: false, message: `No work log found for ${date} on that project.` };
+                                }
+                                targetLogId = workLog.id;
+                            }
+
+                            if (!targetLogId) {
+                                return { success: false, message: 'Please provide either a log ID or both date and project.' };
+                            }
+
+                            await updateWorkLog(targetLogId, employeeId, {
+                                hours,
+                                date: date ? new Date(date) : undefined
+                            });
+                            return { success: true, message: `Updated work log successfully.` };
+                        } catch (err: any) {
+                            return { success: false, message: `Error: ${err.message}` };
+                        }
+                    }
+                },
+                updateBulkWorkLogs: {
+                    description: 'Update work hours for multiple days or a project. Requires either a date range or a project.',
+                    inputSchema: z.object({
+                        projectId: z.string().optional().describe('The ID or Name of the project'),
+                        startDate: z.string().optional().describe('Start date in YYYY-MM-DD format'),
+                        endDate: z.string().optional().describe('End date in YYYY-MM-DD format'),
+                        hours: z.coerce.number().describe('The new number of hours per day')
+                    }),
+                    execute: async ({ projectId, startDate, endDate, hours }: {
+                        projectId?: string,
+                        startDate?: string,
+                        endDate?: string,
+                        hours: number
+                    }) => {
+                        try {
+                            let targetProjectId = projectId;
+                            if (projectId) {
+                                const lowerInput = projectId.toLowerCase();
+                                if (availableProjectMap[lowerInput]) {
+                                    targetProjectId = availableProjectMap[lowerInput];
+                                }
+                            }
+
+                            await updateBulkWorkLogs(employeeId, {
+                                projectId: targetProjectId,
+                                startDate: startDate ? new Date(startDate) : undefined,
+                                endDate: endDate ? new Date(endDate) : undefined,
+                                hours
+                            });
+
+                            let msg = `Updated hours to ${hours}h`;
+                            if (startDate && endDate) msg += ` from ${startDate} to ${endDate}`;
+                            if (projectId) {
+                                const projectName = availableProjects.find((p: any) => p.id === targetProjectId)?.name || projectId;
+                                msg += ` for project ${projectName}`;
+                            }
+
+                            return { success: true, message: msg };
+                        } catch (err: any) {
+                            return { success: false, message: `Error: ${err.message}` };
+                        }
                     }
                 },
                 deleteWorkLog: {
@@ -441,10 +580,11 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                 logVacation: {
                     description: 'Log vacation for a specific day',
                     inputSchema: z.object({
-                        date: z.string().describe('The date in YYYY-MM-DD format (REQUIRED)'),
-                        confirmed: z.boolean().optional().describe('True if logging on a weekend')
+                        date: z.string().describe('The date in YYYY-MM-DD format'),
+                        confirmed: z.boolean().optional().describe('True if logging on a weekend'),
+                        conflictAction: z.enum(['ignore', 'add']).optional().describe('Action to take if vacation already exists')
                     }),
-                    execute: async ({ date, confirmed }: { date: string, confirmed?: boolean }) => {
+                    execute: async ({ date, confirmed, conflictAction }: { date: string, confirmed?: boolean, conflictAction?: 'ignore' | 'add' }) => {
                         try {
                             const d = new Date(date);
                             const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
@@ -457,10 +597,20 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                                 };
                             }
 
-                            await logVacation({
+                            const result = await logVacation({
                                 employeeId,
-                                date: d
+                                date: d,
+                                conflictAction
                             });
+
+                            if ((result as any).conflict) {
+                                return {
+                                    success: false,
+                                    conflict: true,
+                                    message: (result as any).message
+                                };
+                            }
+
                             return { success: true, message: `Logged vacation for ${date}.` };
                         } catch (err: any) {
                             return { success: false, message: `Error: ${err.message}` };
@@ -688,6 +838,25 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                         if (!confirm) return { success: false, message: 'Action cancelled.' };
                         await clearAllLogs(employeeId);
                         return { success: true, message: 'All logs cleared.' };
+                    }
+                },
+                deleteDuplicateWorkLogs: {
+                    description: 'Search for and delete redundant work logs in a date range, leaving only one copy per project per day.',
+                    inputSchema: z.object({
+                        startDate: z.string().optional().describe('Start date in YYYY-MM-DD format'),
+                        endDate: z.string().optional().describe('End date in YYYY-MM-DD format')
+                    }),
+                    execute: async ({ startDate, endDate }: { startDate?: string, endDate?: string }) => {
+                        try {
+                            const result = await deleteDuplicateWorkLogs(
+                                employeeId,
+                                startDate ? new Date(startDate) : undefined,
+                                endDate ? new Date(endDate) : undefined
+                            );
+                            return { success: true, message: `Found and deleted ${result.deletedCount} redundant work log(s).` };
+                        } catch (err: any) {
+                            return { success: false, message: `Error: ${err.message}` };
+                        }
                     }
                 }
             }

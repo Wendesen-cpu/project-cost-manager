@@ -289,9 +289,24 @@ export function AIChat({ onRefresh }: { onRefresh?: () => void }) {
                                                         <button
                                                             key={project.id}
                                                             onClick={() => {
-                                                                const actionText = pendingAction.type === 'logWork'
-                                                                    ? `Log ${pendingAction.hours}h on ${pendingAction.date} for ${project.name}`
-                                                                    : `Log ${pendingAction.hoursPerDay}h from ${pendingAction.startDate} to ${pendingAction.endDate} for ${project.name}`;
+                                                                let actionText = '';
+                                                                if (pendingAction.type === 'logWork') {
+                                                                    actionText = `Log ${pendingAction.hours}h on ${pendingAction.date} for ${project.name}`;
+                                                                } else {
+                                                                    // addBulkWorkLogs
+                                                                    if (pendingAction.month) {
+                                                                        const [year, month] = pendingAction.month.split('-');
+                                                                        const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+                                                                        actionText = `Log ${pendingAction.hoursPerDay}h for ${monthName} for ${project.name}`;
+                                                                    } else {
+                                                                        actionText = `Log ${pendingAction.hoursPerDay}h from ${pendingAction.startDate} to ${pendingAction.endDate} for ${project.name}`;
+                                                                    }
+                                                                }
+
+                                                                if (pendingAction.skipWeekends) {
+                                                                    actionText += " skipping weekends";
+                                                                }
+
                                                                 sendMessage({ text: actionText });
                                                             }}
                                                             disabled={isLoading}

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Project Manager App",
+  title: "Enhanced - Project Manager App",
   description: "Project Manager App - Manage your projects, costs, and employees",
 };
 
