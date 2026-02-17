@@ -27,6 +27,7 @@ import { useI18n } from '@/components/I18nContext';
 import clsx from 'clsx';
 import { LogTimeForm } from './LogTimeForm';
 import { LogVacationForm } from './LogVacationForm';
+import { deleteWorkLog, deleteVacationLog } from '@/app/actions/worklogs';
 
 interface MonthlyCalendarProps {
     employeeId: string;
@@ -76,6 +77,22 @@ export function MonthlyCalendar({ employeeId, projects, workLogs, vacations, onS
         };
     };
 
+    const handleDeleteWorkLog = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        if (confirm(t('common.confirmDelete') || 'Are you sure you want to delete this log?')) {
+            await deleteWorkLog(id, employeeId);
+            onSuccess();
+        }
+    };
+
+    const handleDeleteVacation = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        if (confirm(t('common.confirmDelete') || 'Are you sure you want to delete this vacation?')) {
+            await deleteVacationLog(id, employeeId);
+            onSuccess();
+        }
+    };
+
     return (
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden">
             {/* Calendar Header */}
@@ -114,6 +131,8 @@ export function MonthlyCalendar({ employeeId, projects, workLogs, vacations, onS
                 ))}
             </div>
 
+
+
             <div className="grid grid-cols-7">
                 {calendarDays.map((day, idx) => {
                     const { workLogs: dayWork, vacations: dayVac, totalHours } = getDayData(day);
@@ -122,49 +141,73 @@ export function MonthlyCalendar({ employeeId, projects, workLogs, vacations, onS
                     return (
                         <div
                             key={day.toISOString()}
-                            onClick={() => handleDayClick(day)}
                             className={clsx(
-                                "min-h-[100px] p-2 border-r border-b border-slate-100 last:border-r-0 cursor-pointer transition-all hover:bg-blue-50/30 group relative",
+                                "min-h-[100px] p-2 border-r border-b border-slate-100 last:border-r-0 transition-all hover:bg-slate-50/50 group relative",
                                 !isCurrentMonth && "bg-slate-50/30 opacity-40"
                             )}
                         >
                             <div className="flex justify-between items-start mb-1">
                                 <span className={clsx(
                                     "text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full transition-colors",
-                                    isToday(day) ? "bg-blue-600 text-white" : "text-slate-500 group-hover:text-blue-600"
+                                    isToday(day) ? "bg-blue-600 text-white" : "text-slate-500"
                                 )}>
                                     {format(day, 'd')}
                                 </span>
-                                {totalHours > 0 && (
-                                    <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md">
-                                        {totalHours}h
-                                    </span>
-                                )}
+                                <div className="flex items-center gap-1">
+                                    {totalHours > 0 && (
+                                        <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md">
+                                            {totalHours}h
+                                        </span>
+                                    )}
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDayClick(day);
+                                        }}
+                                        className="p-0.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                        title={t('common.add') || 'Add'}
+                                    >
+                                        <Plus size={14} />
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="space-y-0.5 mt-1 overflow-hidden">
+                            <div className="space-y-1 mt-1 overflow-hidden">
                                 {dayWork.map(log => (
                                     <div
                                         key={log.id}
-                                        className="text-[9px] leading-tight px-1 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-100/50 truncate flex justify-between items-center gap-1"
+                                        className="text-[9px] leading-tight px-1 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-100/50 truncate flex justify-between items-center gap-1 group/item hover:border-blue-300 transition-colors"
                                         title={`${log.project.name}: ${log.hours}h`}
                                     >
                                         <span className="truncate">{log.project.name}</span>
-                                        <span className="font-black flex-shrink-0">{log.hours}h</span>
+                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                            <span className="font-black">{log.hours}h</span>
+                                            <button
+                                                onClick={(e) => handleDeleteWorkLog(e, log.id)}
+                                                className="text-blue-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
-                                {dayVac.length > 0 && (
-                                    <div className="flex items-center gap-1 text-[9px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-md border border-orange-100/50">
-                                        <Palmtree size={10} />
-                                        <span>{t('employeeDashboard.vacation') || 'VAC'}</span>
+                                {dayVac.length > 0 && dayVac.map(vac => (
+                                    <div
+                                        key={vac.id}
+                                        className="flex justify-between items-center gap-1 text-[9px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-md border border-orange-100/50 group/item hover:border-orange-300 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-1">
+                                            <Palmtree size={10} />
+                                            <span>{t('employeeDashboard.vacation') || 'VAC'}</span>
+                                        </div>
+                                        <button
+                                            onClick={(e) => handleDeleteVacation(e, vac.id)}
+                                            className="text-orange-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                        >
+                                            <X size={10} />
+                                        </button>
                                     </div>
-                                )}
-                            </div>
-
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-white/40 backdrop-blur-[1px]">
-                                <div className="p-1.5 bg-blue-600 text-white rounded-lg shadow-lg">
-                                    <Plus size={16} />
-                                </div>
+                                ))}
                             </div>
                         </div>
                     );
