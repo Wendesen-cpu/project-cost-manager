@@ -70,7 +70,8 @@ export async function POST(req: Request) {
     try {
         const result = streamText({
             // model: groq('llama-3.3-70b-versatile'),
-            model: ollama('qwen3-coder:480b-cloud'),
+            model: groq('openai/gpt-oss-120b'),
+            // model: ollama('qwen3-coder:480b-cloud'),
             messages: modelMessages,
             stopWhen: stepCountIs(15),
             system: `You are the Project Pro Assistant.
@@ -105,7 +106,7 @@ YOU MUST CALL THE requestProjectSelection TOOL. DO NOT RESPOND WITH TEXT OR JSON
 
 3. RANGES: For ranges (e.g. Feb 5-10), use addBulkWorkLogs tool.
 
-4. WEEKENDS: For Saturday/Sunday, ask for confirmation BEFORE calling tools.
+4. WEEKENDS: For bulk requests (e.g. "all month"), DEFAULT to skipping weekends unless user says "include weekends". For single dates on weekends, ask for confirmation.
 
 5. CONFIRMATIONS: When a tool says "CONFIRMATION REQUIRED" and user says "yes":
    - DO NOT ask the user again
@@ -255,7 +256,7 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                                     return { success: false, message: 'Invalid arguments. Provide month or start/end dates.' };
                                 }
 
-                                if (!skipWeekends) {
+                                if (skipWeekends === false) {
                                     const weekendDates = [];
                                     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                                         const dayOfWeek = d.getUTCDay();
@@ -285,7 +286,7 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                                     startDate: start,
                                     endDate: end,
                                     hours: hoursPerDay,
-                                    skipWeekends: !!skipWeekends
+                                    skipWeekends: skipWeekends !== false // Default to true
                                 });
 
                                 const projectName = availableProjects.find((p: any) => p.id === targetId)?.name || 'the project';
@@ -396,7 +397,7 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
 
                             const weekendDates = [];
 
-                            if (!skipWeekends) {
+                            if (skipWeekends === false) {
                                 // Check for weekends first if not skipping
                                 for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                                     const dayOfWeek = d.getUTCDay();
@@ -427,7 +428,7 @@ ${availableProjects.map((p: any) => `- ${p.name} (ID: ${p.id})`).join('\n')}
                                 startDate: start,
                                 endDate: end,
                                 hours: hoursPerDay,
-                                skipWeekends: !!skipWeekends
+                                skipWeekends: skipWeekends !== false // Default to true
                             });
 
                             const projectName = availableProjects.find((p: any) => p.id === targetId)?.name || 'the project';
