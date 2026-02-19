@@ -39,6 +39,10 @@
     ".next-secondary/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "test_ollama.ts",
+    "check_logs.ts",
+    "reproduce_issue.ts",
+    "scripts/**"
   ]
 }
